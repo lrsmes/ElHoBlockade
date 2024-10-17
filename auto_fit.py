@@ -1,7 +1,7 @@
 import numpy
 import scipy.optimize as opt
-import autograd.numpy as np
-from autograd import elementwise_grad as egrad
+#import autograd.numpy as np
+#from autograd import elementwise_grad as egrad
 
 
 def nll(residuals, sigma2):

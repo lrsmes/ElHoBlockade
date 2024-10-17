@@ -1,15 +1,18 @@
 import os
-import autograd.numpy as np
+import numpy as np
 import hdf5_helper as helper
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from scipy import constants
 from auto_fit import fit_with_derivative
 from utils import find_hdf5_files
 from HDF5Data import HDF5Data
-from sklearn.preprocessing import normalize, Normalizer
+#from sklearn.preprocessing import normalize, Normalizer
 from scipy.signal import detrend, find_peaks
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
+
+mpl.rcParams['font.size'] = 18
 
 mu_b = constants.physical_constants['Bohr magneton in eV/T']
 
@@ -71,7 +74,7 @@ def calc_peak_distance_tuple(arr1, arr2, y_threshold=0):
     return distance
 
 def g(x, g, b):
-    return 0.5*g*mu_b[0]*x+b
+    return 0.5*np.sqrt((g*mu_b[0]*x)**2+b**2)
 
 
 def main():
@@ -131,8 +134,8 @@ def main():
     lower_rows, lower_cols = zip(*lower_peaks)
 
     # calculate distances
-    ny_upper_dist = calc_peak_distance_tuple(ny_peaks, upper_peaks)
-    ny_lower_dist = calc_peak_distance_tuple(ny_peaks, lower_peaks)
+    ny_upper_dist = calc_peak_distance_tuple(ny_peaks, upper_peaks, y_threshold=100)
+    ny_lower_dist = calc_peak_distance_tuple(ny_peaks, lower_peaks, y_threshold=100)
 
     dFG = FG14[0][1] - FG14[0][0]
 
@@ -142,22 +145,22 @@ def main():
     leverarmFG12 = 0.5798 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
     a = -1.73301
-    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**6 #mueV
-    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**6 #mueV
+    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #mueV
+    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #mueV
 
     # fitting
     popt_upper, pcov_upper = curve_fit(g, Bx_full[list(ny_upper_rows)], ny_upper_cols)
     popt_lower, pcov_lower = curve_fit(g, Bx_full[list(ny_lower_rows)], ny_lower_cols)
 
-    print(f'g-Factor upper: {popt_upper[0]*10**-6}; b upper: {popt_upper[1]}')
-    print(f'g-Factor lower: {popt_lower[0]*10**-6}; b lower: {popt_lower[1]}')
+    print(f'g-Factor upper: {popt_upper[0]*10**-5}; b upper: {popt_upper[1]}')
+    print(f'g-Factor lower: {popt_lower[0]*10**-5}; b lower: {popt_lower[1]}')
 
 
     fig = plt.figure(figsize=(12, 6))
     im = plt.pcolormesh(Bx_full, FG14[0],  map, vmin=-10e-6, vmax=10e-6)
-    plt.scatter(Bx_full[list(ny_rows)], FG14[0][list(ny_cols)], facecolors='none', edgecolors='red', alpha=0.5)
-    plt.scatter(Bx_full[list(upper_rows)], FG14[0][list(upper_cols)], facecolors='none', edgecolors='orange', alpha=0.5)
-    plt.scatter(Bx_full[list(lower_rows)], FG14[0][list(lower_cols)], facecolors='none', edgecolors='magenta', alpha=0.5)
+    #plt.scatter(Bx_full[list(ny_rows)], FG14[0][list(ny_cols)], facecolors='none', edgecolors='red', alpha=0.5)
+    #plt.scatter(Bx_full[list(upper_rows)], FG14[0][list(upper_cols)], facecolors='none', edgecolors='orange', alpha=0.5)
+    #plt.scatter(Bx_full[list(lower_rows)], FG14[0][list(lower_cols)], facecolors='none', edgecolors='magenta', alpha=0.5)
     #plt.axhline(FG14[0][185], color='red')
     #plt.axhline(FG14[0][215], color='red')
     #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.19155), color='orange')
@@ -165,15 +168,30 @@ def main():
     #plt.plot(Bx_full, f(Bx_full, -0.00035, 5.19055), color='orange')
     #plt.plot(Bx_full, f(Bx_full, -0.00035, 5.19095), color='orange')
     plt.ylim(5.1928, 5.189)
-    fig.colorbar(im)
+    plt.ylabel('$FG_{14}$')
+    plt.xlabel('$B_{ \parallel}(T)$')
+    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
+    cbar.set_label('$R_{dem} (a.u.)$', loc='left')
+
 
     plt.figure(figsize=(12, 8))
     plt.scatter(Bx_full[list(ny_upper_rows)[::3]], ny_upper_cols[::3], color='orangered', marker='.')
     plt.plot(Bx_full, g(Bx_full, *popt_upper), color='orangered', linestyle='--')
+    plt.ylim(35, 75)
+    bbox = dict(boxstyle='round', fc='none', ec='black')
+    plt.text(1.05, 44, f'g-factor: {(popt_upper[0]*10**-5).round(2)}', bbox=bbox)
+    plt.xlabel('$B_{ \parallel}(T)$')
+    plt.ylabel('$\Delta E$ $(10\mu eV)$')
 
     plt.figure(figsize=(12, 8))
     plt.scatter(Bx_full[list(ny_lower_rows)[::3]], ny_lower_cols[::3], color='mediumblue', marker='.')
     plt.plot(Bx_full, g(Bx_full, *popt_lower), color='mediumblue', linestyle='--')
+    plt.ylim(35, 75)
+    bbox = dict(boxstyle='round', fc='none', ec='black')
+    plt.text(1.05, 44, f'g-factor: {(popt_lower[0]*10**-5).round(2)}', bbox=bbox)
+    plt.xlabel('$B_{ \parallel}(T)$')
+    plt.ylabel('$\Delta E$ $(10\mu eV)$')
+
     """
     plt.figure(figsize=(12, 8))
     for y in map.T[:20]:

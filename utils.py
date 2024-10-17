@@ -1,15 +1,15 @@
 import math
 import os
-import autograd.numpy as np
+import numpy as np
 import hdf5_helper as helper
 import matplotlib.pyplot as plt
 from scipy import stats, ndimage
-from skimage import filters
+#from skimage import filters
 from scipy.optimize import curve_fit
 from scipy.signal import savgol_filter, detrend
 from scipy.stats import skewnorm
 #from scipy.integrate import cumtrapz
-from skimage.measure import find_contours
+#from skimage.measure import find_contours
 from Data_analysis_and_transforms import correct_median_diff
 
 from scipy import constants
