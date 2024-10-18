@@ -145,15 +145,15 @@ def main():
     leverarmFG12 = 0.5798 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
     a = -1.73301
-    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #mueV
-    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #mueV
+    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #mueV
+    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #mueV
 
     # fitting
     popt_upper, pcov_upper = curve_fit(g, Bx_full[list(ny_upper_rows)], ny_upper_cols)
     popt_lower, pcov_lower = curve_fit(g, Bx_full[list(ny_lower_rows)], ny_lower_cols)
 
-    print(f'g-Factor upper: {popt_upper[0]*10**-5}; b upper: {popt_upper[1]}')
-    print(f'g-Factor lower: {popt_lower[0]*10**-5}; b lower: {popt_lower[1]}')
+    print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]*10**5}')
+    print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]*10**5}')
 
 
     fig = plt.figure(figsize=(12, 6))
@@ -177,18 +177,18 @@ def main():
     plt.figure(figsize=(12, 8))
     plt.scatter(Bx_full[list(ny_upper_rows)[::3]], ny_upper_cols[::3], color='orangered', marker='.')
     plt.plot(Bx_full, g(Bx_full, *popt_upper), color='orangered', linestyle='--')
-    plt.ylim(35, 75)
+    #plt.ylim(35, 75)
     bbox = dict(boxstyle='round', fc='none', ec='black')
-    plt.text(1.05, 44, f'g-factor: {(popt_upper[0]*10**-5).round(2)}', bbox=bbox)
+    plt.text(1.05, 0.00044, f'g-factor: {(popt_upper[0]).round(2)} \n     $\Delta$     : {int(popt_upper[1]*10**5)} $\mu eV$', bbox=bbox)
     plt.xlabel('$B_{ \parallel}(T)$')
     plt.ylabel('$\Delta E$ $(10\mu eV)$')
 
     plt.figure(figsize=(12, 8))
     plt.scatter(Bx_full[list(ny_lower_rows)[::3]], ny_lower_cols[::3], color='mediumblue', marker='.')
     plt.plot(Bx_full, g(Bx_full, *popt_lower), color='mediumblue', linestyle='--')
-    plt.ylim(35, 75)
+    #plt.ylim(35, 75)
     bbox = dict(boxstyle='round', fc='none', ec='black')
-    plt.text(1.05, 44, f'g-factor: {(popt_lower[0]*10**-5).round(2)}', bbox=bbox)
+    plt.text(1.05, 0.00044, f'g-factor: {(popt_lower[0]).round(2)} \n     $\Delta$     : {int(popt_lower[1]*10**5)} $\mu eV$', bbox=bbox)
     plt.xlabel('$B_{ \parallel}(T)$')
     plt.ylabel('$\Delta E$ $(10\mu eV)$')
 
