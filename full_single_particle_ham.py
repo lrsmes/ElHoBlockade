@@ -19,25 +19,34 @@ def hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, bpara_off=0.0,
 def calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, bpara_off=0.0, bortho_off=0.0):
     eigen_energies = []
     eigen_vectors = []
+    eigen_energies_h = []
+    eigen_vectors_h = []
+    diff_to_Kup = []
     for bfield in bfields:
         H = hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, bpara_off, bortho_off)
+        H_h = -H
         eigvals, eigvecs = np.linalg.eigh(H)
-        eigen_energies.append(eigvals)
-        eigen_vectors.append(eigvecs)
-    return np.array(eigen_energies), np.array(eigen_vectors)
+        eigvals_h, eigvecs_h = np.linalg.eig(H_h)
+        eigen_energies.append(eigvals-1)
+        eigen_vectors.append(eigvecs-1)
+        eigen_energies_h.append(eigvals_h-2.5)
+        eigen_vectors_h.append(eigvecs_h-2.5)
+        diff_to_Kup.append(np.abs((eigvals[:, np.newaxis] - 1) + (eigvals_h - 1.5)).flatten())
+    return np.array(eigen_energies), np.array(eigen_vectors), np.array(eigen_energies_h), np.array(eigen_vectors_h), np.array(diff_to_Kup)
 
 
 def main(coloring="band"):
     # Energies in meV
     deltaSO = -60 * 10 ** -3
-    deltaKK = 5.0 * 10 ** -3
-    deltaSV = 5.0 * 10 ** -3
+    deltaKK = 0.0 * 10 ** -3
+    deltaSV = 0.0 * 10 ** -3
     gs = 2.0
-    gv = 15.0
+    gv = 13.0
     theta = np.deg2rad(0)
     bfields = np.arange(-.1, 3.4, 0.001)
-    eigen_energies, eigen_vectors = calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv,
-                                                           bpara_off=0.0, bortho_off=0.5)
+    eigen_energies, eigen_vectors, eigen_energies_h, eigen_vectors_h, diff = calc_Bfield_dispersion(
+        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, bpara_off=0.0, bortho_off=0.5
+    )
 
     plt.figure()
 
@@ -45,6 +54,9 @@ def main(coloring="band"):
         # Color by band index
         for band_idx, band in enumerate(eigen_energies.T):
             plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', cmap='viridis')
+        for band_idx, band in enumerate(eigen_energies_h.T):
+            plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', cmap='viridis')
+
 
     elif coloring == "spin":
         # Color by spin projection (0, 2 for spin up, 1, 3 for spin down)
@@ -67,6 +79,14 @@ def main(coloring="band"):
     plt.colorbar(label='Projection')
     plt.xlabel('B-field (T)')
     plt.ylabel('Energy (meV)')
+    plt.legend(loc='upper right')
+    plt.show()
+
+    plt.figure()
+    for idx, dif in enumerate(diff.T):
+        plt.scatter(bfields, dif, s=1.0, label=f'Band {idx}', cmap='viridis')
+    plt.xlabel('B-field (T)')
+    plt.ylabel('$\Delta E$ (meV)')
     plt.legend(loc='upper right')
     plt.show()
 

@@ -14,7 +14,7 @@ from scipy.optimize import curve_fit
 
 mpl.rcParams['font.size'] = 18
 
-mu_b = constants.physical_constants['Bohr magneton in eV/T']
+mu_b = constants.physical_constants['Bohr magneton in eV/T'][0]#*10**-5
 
 
 def load_data(files, dir):
@@ -74,7 +74,7 @@ def calc_peak_distance_tuple(arr1, arr2, y_threshold=0):
     return distance
 
 def g(x, g, b):
-    return 0.5*np.sqrt((g*mu_b[0]*x)**2+b**2)
+    return 0.5*np.sqrt((g*mu_b*x)**2+b**2)
 
 
 def main():
@@ -145,14 +145,14 @@ def main():
     leverarmFG12 = 0.5798 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
     a = -1.73301
-    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #mueV
-    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #mueV
+    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #10mueV
+    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #10mueV
 
     # fitting
     popt_upper, pcov_upper = curve_fit(g, Bx_full[list(ny_upper_rows)], ny_upper_cols)
     popt_lower, pcov_lower = curve_fit(g, Bx_full[list(ny_lower_rows)], ny_lower_cols)
 
-    print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]*10**5}')
+    print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]*10**5}') #*10**-5
     print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]*10**5}')
 
 
