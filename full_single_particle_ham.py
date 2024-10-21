@@ -4,34 +4,35 @@ import matplotlib.colors as mcolors
 
 mub = 0.05788  # meV/T
 
-def hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, bpara_off=0.0, bortho_off=0.0):
+def hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb,bpara_off=0.0, bortho_off=0.0):
     bpara = np.cos(theta) * bfield + bpara_off
     bortho = np.sin(theta) * bfield + bortho_off
     ezv = 0.5 * mub * gv * bortho
     esz = 0.5 * mub * gs * bortho
-    ham = np.array([[0.5 * deltaSO + ezv + esz, 0.5 * gs * mub * bpara, deltaKK, deltaSV],  # K up
-                    [0.5 * gs * mub * bpara, -0.5 * deltaSO + ezv - esz, deltaSV, deltaKK],  # K down
-                    [deltaKK, deltaSV, -0.5 * deltaSO - ezv + esz, 0.5 * gs * mub * bpara],  # K' up
-                    [deltaSV, deltaKK, 0.5 * gs * mub * bpara, 0.5 * deltaSO - ezv - esz]])  # K' down
+    ham = np.array([[0.5 * deltaSO + ezv + esz + delta_orb, 0.5 * gs * mub * bpara, deltaKK, deltaSV],  # K up
+                    [0.5 * gs * mub * bpara, -0.5 * deltaSO + ezv - esz +delta_orb, deltaSV, deltaKK],  # K down
+                    [deltaKK, deltaSV, -0.5 * deltaSO - ezv + esz + delta_orb, 0.5 * gs * mub * bpara],  # K' up
+                    [deltaSV, deltaKK, 0.5 * gs * mub * bpara, 0.5 * deltaSO - ezv - esz + delta_orb]])  # K' down
     return ham
 
 
-def calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, bpara_off=0.0, bortho_off=0.0):
+def calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb,bpara_off=0.0, bortho_off=0.0):
     eigen_energies = []
     eigen_vectors = []
     eigen_energies_h = []
     eigen_vectors_h = []
     diff_to_Kup = []
     for bfield in bfields:
-        H = hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, bpara_off, bortho_off)
-        H_h = -H
+        H = hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off, bortho_off)
+        H_h = -hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, 0, bpara_off, bortho_off)
         eigvals, eigvecs = np.linalg.eigh(H)
         eigvals_h, eigvecs_h = np.linalg.eig(H_h)
-        eigen_energies.append(eigvals-1)
-        eigen_vectors.append(eigvecs-1)
-        eigen_energies_h.append(eigvals_h-2.5)
-        eigen_vectors_h.append(eigvecs_h-2.5)
-        diff_to_Kup.append(np.abs((eigvals[:, np.newaxis] - 1) + (eigvals_h - 1.5)).flatten())
+        eigen_energies.append(eigvals)
+        eigen_vectors.append(eigvecs)
+        eigen_energies_h.append(eigvals_h)
+        eigen_vectors_h.append(eigvecs_h)
+        diff_to_Kup.append(np.sqrt((eigvals[:, np.newaxis] - eigvals_h)**2).flatten())
+        #diff_to_Kup.append(np.abs((eigvals - eigvals[0])))
     return np.array(eigen_energies), np.array(eigen_vectors), np.array(eigen_energies_h), np.array(eigen_vectors_h), np.array(diff_to_Kup)
 
 
@@ -40,12 +41,13 @@ def main(coloring="band"):
     deltaSO = -60 * 10 ** -3
     deltaKK = 0.0 * 10 ** -3
     deltaSV = 0.0 * 10 ** -3
+    delta_orb = 1.6
     gs = 2.0
     gv = 13.0
     theta = np.deg2rad(0)
     bfields = np.arange(-.1, 3.4, 0.001)
     eigen_energies, eigen_vectors, eigen_energies_h, eigen_vectors_h, diff = calc_Bfield_dispersion(
-        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, bpara_off=0.0, bortho_off=0.5
+        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off=0.0, bortho_off=0.5
     )
 
     plt.figure()

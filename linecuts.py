@@ -74,7 +74,10 @@ def calc_peak_distance_tuple(arr1, arr2, y_threshold=0):
     return distance
 
 def g(x, g, b):
-    return 0.5*np.sqrt((g*mu_b*x)**2+b**2)
+    return np.sqrt((g*mu_b*x)**2+b**2)
+
+def g_lin(x, g, b):
+    return g*mu_b*x + b
 
 
 def main():
@@ -149,8 +152,8 @@ def main():
     ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #10mueV
 
     # fitting
-    popt_upper, pcov_upper = curve_fit(g, Bx_full[list(ny_upper_rows)], ny_upper_cols)
-    popt_lower, pcov_lower = curve_fit(g, Bx_full[list(ny_lower_rows)], ny_lower_cols)
+    popt_upper, pcov_upper = curve_fit(g_lin, Bx_full[list(ny_upper_rows)], ny_upper_cols)
+    popt_lower, pcov_lower = curve_fit(g_lin, Bx_full[list(ny_lower_rows)], ny_lower_cols)
 
     print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]*10**5}') #*10**-5
     print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]*10**5}')
@@ -176,7 +179,7 @@ def main():
 
     plt.figure(figsize=(12, 8))
     plt.scatter(Bx_full[list(ny_upper_rows)[::3]], ny_upper_cols[::3], color='orangered', marker='.')
-    plt.plot(Bx_full, g(Bx_full, *popt_upper), color='orangered', linestyle='--')
+    plt.plot(Bx_full, g_lin(Bx_full, *popt_upper), color='orangered', linestyle='--')
     #plt.ylim(35, 75)
     bbox = dict(boxstyle='round', fc='none', ec='black')
     plt.text(1.05, 0.00044, f'g-factor: {(popt_upper[0]).round(2)} \n     $\Delta$     : {int(popt_upper[1]*10**5)} $\mu eV$', bbox=bbox)
@@ -185,7 +188,7 @@ def main():
 
     plt.figure(figsize=(12, 8))
     plt.scatter(Bx_full[list(ny_lower_rows)[::3]], ny_lower_cols[::3], color='mediumblue', marker='.')
-    plt.plot(Bx_full, g(Bx_full, *popt_lower), color='mediumblue', linestyle='--')
+    plt.plot(Bx_full, g_lin(Bx_full, *popt_lower), color='mediumblue', linestyle='--')
     #plt.ylim(35, 75)
     bbox = dict(boxstyle='round', fc='none', ec='black')
     plt.text(1.05, 0.00044, f'g-factor: {(popt_lower[0]).round(2)} \n     $\Delta$     : {int(popt_lower[1]*10**5)} $\mu eV$', bbox=bbox)
