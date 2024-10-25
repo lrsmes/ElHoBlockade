@@ -1,6 +1,6 @@
 import math
 import os
-import numpy as np
+import autograd.numpy as np
 import hdf5_helper as helper
 import matplotlib.pyplot as plt
 from scipy import stats, ndimage
@@ -44,10 +44,13 @@ def integrate_2d(dZ, dx, axis=0):
     """
     Integrate 2D data along a given axis (0 = x, 1 = y).
     """
+    Z_int = 0
     if axis == 0:  # Integrate along x-axis
-        Z_int = cumtrapz(dZ, dx=dx, axis=0, initial=0)
+        pass
+        #Z_int = cumtrapz(dZ, dx=dx, axis=0, initial=0)
     elif axis == 1:  # Integrate along y-axis
-        Z_int = cumtrapz(dZ, dx=dx, axis=1, initial=0)
+        pass
+        #Z_int = cumtrapz(dZ, dx=dx, axis=1, initial=0)
     return Z_int
 
 
@@ -139,19 +142,15 @@ def get_slopes(map):
 
 def substract_linear_BG(dem_R, FG_12, FG_14, xl, xr, yt, yb, subtract=False):
     dem_R_temp = dem_R[:, ::-1].T
-
-    p_low, p_high = np.percentile(dem_R_temp, (2, 98))
-    dem_R_temp = np.clip(dem_R_temp, p_low, p_high)
-    #dem_R_temp = correct_median_diff(dem_R_temp.T).T
     #dem_R_temp = detrend(dem_R_temp)
 
     # Compute derivatives
     #x = np.arange(0, 201, 1)
     dx = 1#x[1] - x[0]
-    dZ_dx = differentiate_2d(dem_R_temp.T, dx)
+    #dZ_dx = differentiate_2d(dem_R_temp.T, dx)
 
     # Integrate back
-    integral = integrate_2d(dZ_dx, dx).T
+    #integral = integrate_2d(dZ_dx, dx).T
 
     #integral = np.clip(integral, p_low, p_high)
 
@@ -204,10 +203,14 @@ def substract_linear_BG(dem_R, FG_12, FG_14, xl, xr, yt, yb, subtract=False):
     # endregion
     plt.close(fig)
 
-    #dem_R_sub = dem_R_temp - BG
+    dem_R_sub = dem_R_temp - BG
+
+    p_low, p_high = np.percentile(dem_R_sub, (2, 98))
+    #dem_R_sub = np.clip(dem_R_sub, p_low, p_high)
+    dem_R_sub = correct_median_diff(dem_R_sub.T).T
     #dem_R_corrected = correct_median_diff(dem_R_temp.T).T
 
-    return integral #dem_R_sub
+    return dem_R_sub #integral
 
 def define_resonances_tp(dem_R, FG_12, FG_14, file_dir, tread, pulse_dir,
                          h_res_slope=13.5 / 180,

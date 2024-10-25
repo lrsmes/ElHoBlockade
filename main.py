@@ -1,6 +1,6 @@
 import math
 import os
-import numpy as np
+import autograd.numpy as np
 import hdf5_helper as helper
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -336,7 +336,6 @@ def regime_tl_larger_ti_1T():
     plt.xlabel(r'$T_{read}$ ($\mu$s)')
     plt.savefig('blockade_int_ratio.svg', dpi=600)
     plt.savefig(os.path.join(file_dir, f'exp_fit_neg.png'))
-
 
 def regime_ti_larger_tl_1T():
     # Get the current working directory
@@ -702,15 +701,15 @@ def regime_ti_larger_tl_450mT():
                  linestyle='None', marker='.',
                  color='mediumvioletred', elinewidth=0.5)
 
-    """
+
     popt, pcov = curve_fit(exponential_model,
                            ydata=ratios_blockade[:-3],
-                           xdata=t_read_s,
+                           xdata=t_read_s[:-3],
                            sigma=ratios_err_blockade[:-3],
                            p0=[1, 0.5, 0.5])
-    """
 
-    popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
+
+    #popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
 
     t = np.linspace(0, max(t_read_s), 100)
     print(popt, "\n", pcov)
@@ -747,24 +746,23 @@ def regime_ti_larger_tl_450mT():
                  linestyle='None', marker='.',
                  color='mediumblue', elinewidth=0.5)
 
-    """
+
     popt_ny, pcov_ny = curve_fit(exponential_model,
                            ydata=ratios_transport_ny,
                            xdata=t_read_s,
                            sigma=ratios_err_transport_ny,
                            p0=[1, 0.5, 0.5])
-    """
-    popt_ny, pcov_ny = fit_with_derivative(exponential_model, t_read_s, ratios_transport_ny, p0=[1, 0.5, 0.5])
 
-    """
+    #popt_ny, pcov_ny = fit_with_derivative(exponential_model, t_read_s, ratios_transport_ny, p0=[1, 0.5, 0.5])
+
+
     popt_alpha, pcov_alpha = curve_fit(exponential_model,
                            ydata=ratios_transport_alpha,
                            xdata=t_read_s,
                            sigma=ratios_err_transport_alpha,
                            p0=[1, 0.5, 0.5])
-    """
-    popt_alpha, pcov_alpha = fit_with_derivative(exponential_model, t_read_s, ratios_transport_alpha,
-                                           p0=[1, 0.5, 0.5])
+
+    #popt_alpha, pcov_alpha = fit_with_derivative(exponential_model, t_read_s, ratios_transport_alpha, p0=[1, 0.5, 0.5])
 
     t = np.linspace(0, max(t_read_s), 100)
     print(popt_ny, "\n", pcov_ny) #np.sqrt(np.diag(pcov_ny)))
@@ -824,11 +822,46 @@ def regime_ti_larger_tl_200mT():
         ratios_blockade.append(r)
         ratios_err_blockade.append(err)
 
+def both_dir_500mT():
+    # Get the current working directory
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "500mT_both_dir")
+    file_names = find_hdf5_files(file_dir)
+
+    group = "Data"
+    dataset = "Data/Data"
+    channels = "Data/Channel names"
+
+    ratios_transport = []
+    ratios_err_transport = []
+    ratios_blockade = []
+    ratios_err_blockade = []
+    all_maps_blockade = []
+    all_maps_transport = []
+
+    for file in file_names:
+        # Load the data in the given file
+        all_maps_pos, all_maps_neg = load_data(file, group, dataset, channels, all_maps_blockade, all_maps_transport)
+
+    print(all_maps_blockade)
+    ###########
+    # Blockade
+    ###########
+    print('###################### blockade #########################')
+    off = get_offset(2597, all_maps_blockade[0][0], 0, 1)
+    for i, map in enumerate(all_maps_blockade):
+        r, err = process_data(map, y_tuple(map[-1], map[-2], 20, off, 1), (50, 50), #+10
+                              file_dir, 1, True, 0.35, 0.18)
+        ratios_blockade.append(r)
+        ratios_err_blockade.append(err)
+
+
 def main():
     # regime_tl_larger_ti()
     # regime_ti_larger_tl()
-    regime_ti_larger_tl_450mT()
+    #regime_ti_larger_tl_450mT()
     # regime_ti_larger_tl_200mT()
+    both_dir_500mT()
 
 if __name__ == "__main__":
     main()
