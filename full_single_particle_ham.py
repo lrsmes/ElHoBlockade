@@ -31,7 +31,7 @@ def calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, de
         eigen_vectors.append(eigvecs)
         eigen_energies_h.append(eigvals_h)
         eigen_vectors_h.append(eigvecs_h)
-        diff_to_Kup.append(np.sqrt((eigvals[:, np.newaxis] - eigvals_h)**2).flatten())
+        diff_to_Kup.append(np.sqrt((eigvals[:, np.newaxis] - np.flip(eigvals_h))**2))
         #diff_to_Kup.append(np.abs((eigvals - eigvals[0])))
     return np.array(eigen_energies), np.array(eigen_vectors), np.array(eigen_energies_h), np.array(eigen_vectors_h), np.array(diff_to_Kup)
 
@@ -43,9 +43,9 @@ def main(coloring="band"):
     deltaSV = 0.0 * 10 ** -3
     delta_orb = 1.6
     gs = 2.0
-    gv = 13.0
+    gv = 14.0
     theta = np.deg2rad(0)
-    bfields = np.arange(-.1, 3.4, 0.001)
+    bfields = np.arange(-.1, 1.5, 0.001)
     eigen_energies, eigen_vectors, eigen_energies_h, eigen_vectors_h, diff = calc_Bfield_dispersion(
         bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off=0.0, bortho_off=0.5
     )
@@ -58,6 +58,13 @@ def main(coloring="band"):
             plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', cmap='viridis')
         for band_idx, band in enumerate(eigen_energies_h.T):
             plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', cmap='viridis')
+
+    elif coloring == "elho":
+        # Color by band index
+        for band_idx, band in enumerate(eigen_energies.T):
+            plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', color='mediumblue')
+        for band_idx, band in enumerate(eigen_energies_h.T):
+            plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', color='darkred')
 
 
     elif coloring == "spin":
@@ -78,21 +85,46 @@ def main(coloring="band"):
             plt.scatter(bfields, band, c=valley_projection, s=1.0, cmap='plasma', norm=norm,
                         label=f'Valley projection band {band_idx}')
 
-    plt.colorbar(label='Projection')
+    #plt.colorbar(label='Projection')
     plt.xlabel('B-field (T)')
     plt.ylabel('Energy (meV)')
-    plt.legend(loc='upper right')
+    #plt.legend(loc='upper right')
     plt.show()
 
     plt.figure()
-    for idx, dif in enumerate(diff.T):
-        plt.scatter(bfields, dif, s=1.0, label=f'Band {idx}', cmap='viridis')
+    """
+    for idx, dif in enumerate(diff):
+        plt.scatter(bfields[idx], dif[0, 0], s=1.0, label=f'GS-GS')
+        plt.scatter([bfields[idx]] * 2, [dif[1, 0], dif[0, 1]], s=1.0, label=f'$\nu$')
+        plt.scatter([bfields[idx]] * 2, [dif[2, 0], dif[0, 2]], s=1.0, label=f'$\alpha$')
+        plt.scatter([bfields[idx]] * 2, [dif[3, 1], dif[1, 3]], s=1.0, label=f'$\beta$')
+        plt.scatter([bfields[idx]] * 4, [dif[3, 0], dif[0, 3], dif[2, 1], dif[1, 2]], s=1.0, label=f'$\gamma$')
+        plt.scatter([bfields[idx]] * 3, [dif[1, 1], dif[2, 2], dif[3, 3]], s=1.0, label=f'Spin-Valley')
+        plt.scatter([bfields[idx]] * 2, [dif[3, 2], dif[2, 3]], s=1.0, label=f'Valley')
+    """
+    y_gs_gs = diff[:, 0, 0]  # GS-GS
+    y_nu = np.vstack([diff[:, 1, 0], diff[:, 0, 1]]).T  # ν
+    y_alpha = np.vstack([diff[:, 2, 0], diff[:, 0, 2]]).T  # α
+    y_beta = np.vstack([diff[:, 3, 1], diff[:, 1, 3]]).T  # β
+    #y_gamma = np.vstack([diff[:, 3, 0], diff[:, 0, 3], diff[:, 2, 1], diff[:, 1, 2]]).T  # γ
+    y_spin_valley = np.vstack([diff[:, 1, 1], diff[:, 2, 2], diff[:, 3, 3]]).T  # Spin-Valley
+    y_valley = np.vstack([diff[:, 3, 2], diff[:, 2, 3]]).T  # Valley
+
+    # Now plot each array against bfields
+    plt.figure(figsize=(10, 8))
+    plt.scatter(bfields, y_gs_gs, s=1.0, label='GS-GS')
+    plt.scatter(np.repeat(bfields, 2), y_nu.flatten(), s=1.0, label='$\\nu$')
+    plt.scatter(np.repeat(bfields, 2), y_alpha.flatten(), s=1.0, label='$\\alpha$')
+    plt.scatter(np.repeat(bfields, 2), y_beta.flatten(), s=1.0, label='$\\beta$')
+    #plt.scatter(np.repeat(bfields, 4), y_gamma.flatten(), s=1.0, label='$\\gamma$')
+    plt.scatter(np.repeat(bfields, 3), y_spin_valley.flatten(), s=1.0, label='Spin-Valley')
+    plt.scatter(np.repeat(bfields, 2), y_valley.flatten(), s=1.0, label='Valley')
     plt.xlabel('B-field (T)')
     plt.ylabel('$\Delta E$ (meV)')
-    plt.legend(loc='upper right')
+    plt.legend(loc='upper right', markerscale=2.5)
     plt.show()
 
 
 if __name__ == "__main__":
     # You can change "coloring" to "spin" or "valley" to change the coloring mode
-    main(coloring="band")  # Options: "band", "spin", "valley"
+    main(coloring="elho")  # Options: "band", "spin", "valley"

@@ -858,10 +858,10 @@ def both_dir_500mT():
 
 def main():
     # regime_tl_larger_ti()
-    # regime_ti_larger_tl()
+    regime_ti_larger_tl_1T()
     #regime_ti_larger_tl_450mT()
     # regime_ti_larger_tl_200mT()
-    both_dir_500mT()
+    #both_dir_500mT()
 
 if __name__ == "__main__":
     main()
