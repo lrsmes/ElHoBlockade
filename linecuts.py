@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import pylab as pl
+
 import hdf5_helper as helper
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -7,14 +9,14 @@ from scipy import constants
 from auto_fit import fit_with_derivative
 from utils import find_hdf5_files
 from HDF5Data import HDF5Data
-#from sklearn.preprocessing import normalize, Normalizer
-from scipy.signal import detrend, find_peaks
+from sklearn.preprocessing import normalize
+from scipy.signal import detrend, find_peaks, find_peaks_cwt
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
 
 mpl.rcParams['font.size'] = 18
 
-mu_b = constants.physical_constants['Bohr magneton in eV/T'][0]#*10**-5
+mu_b = constants.physical_constants['Bohr magneton in eV/T'][0]*10**5
 
 
 def load_data(files, dir):
@@ -46,7 +48,7 @@ def stitch_maps(arr1, arr2, vals, FG14):
     result = np.full((arr1_height, arr1_width+arr2_width), np.mean(arr2))
 
     # Determine the range for stitching arr1 and arr2 based on the shift (position)
-    if position > 0:
+    if position >= 0:
         # arr2 is shifted down, pad at the top
         result[:, :arr1_width] = arr1  # Copy arr1 top part into result
         result[:arr1_height - position, arr1_width:] = arr2[position:, :]  # Copy shifted arr2 into result
@@ -73,14 +75,25 @@ def calc_peak_distance_tuple(arr1, arr2, y_threshold=0):
                 distance.append((i, diff))
     return distance
 
-def g(x, g, b):
-    return np.sqrt((g*mu_b*x)**2+b**2)
+def g_pos(x, g, b, a):
+    return 0.5*np.sqrt((g*mu_b*x)**2+b**2)
+
+def g_neg(x, g, b, a):
+    return a - 0.5*np.sqrt((g*mu_b*x)**2+b**2)
+
+B_perp = 0.5
+
+def del_E(x, gs, gv, delta_S0):
+    return -0.5*gv*mu_b*B_perp+0.5*np.sqrt((gv*mu_b*B_perp)**2-2*delta_S0*gs*mu_b*B_perp+delta_S0**2+(gs*mu_b*x)**2)
+
+def del_E2(x, gs, delta, gv):
+    return -0.5*gv*mu_b*B_perp + 0.5*np.sqrt((delta + gs * mu_b * B_perp)**2 + (gs * mu_b * x) ** 2)
 
 def g_lin(x, g, b):
-    return g*mu_b*x + b
+    return 0.5*g*mu_b*x + b
 
 
-def main():
+def linecut_500mT():
     current_dir = os.getcwd()
     file_dir = os.path.join(current_dir, "in_plane_linecuts")
     file_names = find_hdf5_files(file_dir)
@@ -94,16 +107,16 @@ def main():
     DemodR[2] = np.array([trace - np.mean(trace) for trace in DemodR[2][:, :-1].T]).T
 
     for i, map in enumerate(DemodR):
-        DemodR[i] = gaussian_filter1d(map, 1, axis=0)
+        DemodR[i] = gaussian_filter1d(map, 1, axis=1)
 
     # stitch maps to one
-    start_second = np.argmin(np.abs(np.flip(Bx[1])-0.640))
-    end_second = np.argmin(np.abs(np.flip(Bx[1])-0.735))
+    start_second = np.argmin(np.abs(np.flip(Bx[1])-0.64))
+    end_second = np.argmin(np.abs(np.flip(Bx[1])-0.734))
     end_third = np.argmin(np.abs(np.flip(Bx[1])-0.907))
     second_jump_map = DemodR[1][:, start_second:end_second]
     third_jump_map = DemodR[1][:, end_second:end_third]
     fourth_jump_map = DemodR[1][:, end_third:]
-    map = stitch_maps(DemodR[0], DemodR[2], (5.18989, 5.189896), FG14)
+    map = stitch_maps(DemodR[0], DemodR[2], (5.18988, 5.18988), FG14)
     map = stitch_maps(map, second_jump_map, (5.1899, 5.19052), FG14)
     map = stitch_maps(map, third_jump_map, (5.18995, 5.18992), FG14)
     map = stitch_maps(map, fourth_jump_map, (5.18994, 5.18979), FG14)
@@ -111,23 +124,26 @@ def main():
     map = map[55:-10]
     FG14[0] = FG14[0][55:-10]
 
+    #p_low, p_high = np.percentile(map, (0.01, 99.99))
+    #map = np.clip(map, -2, 2)
+
     # find peaks
     Bx_full = np.linspace(0, 1.5, map.shape[1])
     ny_peaks = []
     upper_peaks = []
     lower_peaks = []
     for i, row in enumerate(map.T):
-        peaks, properties = find_peaks(-row, height=0.6e-5, width=22)
+        peaks, properties = find_peaks(-row, height=0.4e-5, width=22)
         for peak in peaks:
             if peak > 185 and peak < 215:
                 ny_peaks.append((i, peak))
-        peaks, properties = find_peaks(-row, height=-0.075e-5, width=16)
+        peaks, properties = find_peaks(-row, height=-1e-5, width=13)
         for peak in peaks:
-            if FG14[0][peak] > f(Bx_full[i], 0.00035, 5.19155) and FG14[0][peak] < f(Bx_full[i], 0.00035, 5.192):
+            if FG14[0][peak] > f(Bx_full[i], 0.00035, 5.1915) and FG14[0][peak] < f(Bx_full[i], 0.00035, 5.192):
                 lower_peaks.append((i, peak))
-        peaks, properties = find_peaks(-row, height=-0.2e-5, width=12)
+        peaks, properties = find_peaks(-row, height=-0.75e-5, width=12)
         for peak in peaks:
-            if FG14[0][peak] > f(Bx_full[i], -0.00035, 5.19055) and FG14[0][peak] < f(Bx_full[i], -0.00035, 5.19095):
+            if FG14[0][peak] > f(Bx_full[i], -0.00035, 5.19055) and FG14[0][peak] < f(Bx_full[i], -0.00035, 5.1908):
                 #print(f(Bx_full[i], -0.00035, 5.19095), FG14[0][peak], peak)
                 upper_peaks.append((i, peak))
 
@@ -137,26 +153,37 @@ def main():
     lower_rows, lower_cols = zip(*lower_peaks)
 
     # calculate distances
-    ny_upper_dist = calc_peak_distance_tuple(ny_peaks, upper_peaks, y_threshold=100)
-    ny_lower_dist = calc_peak_distance_tuple(ny_peaks, lower_peaks, y_threshold=100)
+    ny_upper_dist = calc_peak_distance_tuple(ny_peaks, upper_peaks, y_threshold=20)
+    ny_lower_dist = calc_peak_distance_tuple(ny_peaks, lower_peaks, y_threshold=20)
 
     dFG = FG14[0][1] - FG14[0][0]
 
     ny_upper_rows, ny_upper_cols = zip(*ny_upper_dist)
     ny_lower_rows, ny_lower_cols = zip(*ny_lower_dist)
 
-    leverarmFG12 = 0.5798 #eV/V
+    leverarmFG12 = 0.08488 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
     a = -1.73301
-    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #10mueV
-    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)#*10**5 #10mueV
+    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #10mueV
+    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #10mueV
 
     # fitting
-    popt_upper, pcov_upper = curve_fit(g_lin, Bx_full[list(ny_upper_rows)], ny_upper_cols)
-    popt_lower, pcov_lower = curve_fit(g_lin, Bx_full[list(ny_lower_rows)], ny_lower_cols)
+    popt_upper, pcov_upper = curve_fit(del_E2, Bx_full[list(ny_upper_rows)], ny_upper_cols)
+    popt_lower, pcov_lower = curve_fit(del_E2, Bx_full[list(ny_lower_rows)], ny_lower_cols)
 
-    print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]*10**5}') #*10**-5
-    print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]*10**5}')
+    print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]}') #*10**-5
+    print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]}')
+
+    print(popt_upper)
+
+    plt.figure(figsize=(12, 8))
+    for trace in map.T:
+        plt.plot(-trace)
+
+    plt.axvline(175)
+    plt.axvline(225)
+
+    plt.ylim(-2*10**-5, 2*10**-5)
 
 
     fig = plt.figure(figsize=(12, 6))
@@ -164,12 +191,12 @@ def main():
     #plt.scatter(Bx_full[list(ny_rows)], FG14[0][list(ny_cols)], facecolors='none', edgecolors='red', alpha=0.5)
     #plt.scatter(Bx_full[list(upper_rows)], FG14[0][list(upper_cols)], facecolors='none', edgecolors='orange', alpha=0.5)
     #plt.scatter(Bx_full[list(lower_rows)], FG14[0][list(lower_cols)], facecolors='none', edgecolors='magenta', alpha=0.5)
-    #plt.axhline(FG14[0][185], color='red')
-    #plt.axhline(FG14[0][215], color='red')
-    #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.19155), color='orange')
-    #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.192), color='orange')
-    #plt.plot(Bx_full, f(Bx_full, -0.00035, 5.19055), color='orange')
-    #plt.plot(Bx_full, f(Bx_full, -0.00035, 5.19095), color='orange')
+    #plt.axhline(FG14[0][175], color='red')
+    #plt.axhline(FG14[0][225], color='red')
+    #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.1914), color='orange')
+    #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.1921), color='orange')
+    #plt.plot(Bx_full, f(Bx_full, -0.00035, 5.1905), color='orange')
+    #plt.plot(Bx_full, f(Bx_full, -0.00035, 5.1911), color='orange')
     plt.ylim(5.1928, 5.189)
     plt.ylabel('$FG_{14}$')
     plt.xlabel('$B_{ \parallel}(T)$')
@@ -179,19 +206,23 @@ def main():
 
     plt.figure(figsize=(12, 8))
     plt.scatter(Bx_full[list(ny_upper_rows)[::3]], ny_upper_cols[::3], color='orangered', marker='.')
-    plt.plot(Bx_full, g_lin(Bx_full, *popt_upper), color='orangered', linestyle='--')
-    #plt.ylim(35, 75)
+    plt.plot(Bx_full, del_E2(Bx_full, *popt_upper), color='orangered', linestyle='--')
+    plt.ylim(5, 12)
     bbox = dict(boxstyle='round', fc='none', ec='black')
-    plt.text(1.05, 0.00044, f'g-factor: {(popt_upper[0]).round(2)} \n     $\Delta$     : {int(popt_upper[1]*10**5)} $\mu eV$', bbox=bbox)
+    plt.text(1.0, 6.5,
+             r'$g_{S}$: ' + '{:.2}'.format(popt_upper[0]) + '\n'  +  '$\Delta$: ' + '{} $\mu eV$'.format(int(popt_upper[1]*10)),
+             bbox=bbox)
     plt.xlabel('$B_{ \parallel}(T)$')
     plt.ylabel('$\Delta E$ $(10\mu eV)$')
 
     plt.figure(figsize=(12, 8))
     plt.scatter(Bx_full[list(ny_lower_rows)[::3]], ny_lower_cols[::3], color='mediumblue', marker='.')
-    plt.plot(Bx_full, g_lin(Bx_full, *popt_lower), color='mediumblue', linestyle='--')
-    #plt.ylim(35, 75)
+    plt.plot(Bx_full, del_E2(Bx_full, *popt_lower), color='mediumblue', linestyle='--')
+    plt.ylim(5, 12)
     bbox = dict(boxstyle='round', fc='none', ec='black')
-    plt.text(1.05, 0.00044, f'g-factor: {(popt_lower[0]).round(2)} \n     $\Delta$     : {int(popt_lower[1]*10**5)} $\mu eV$', bbox=bbox)
+    plt.text(1.0, 6.5,
+             r'$g_{S}$: ' + '{:.2}'.format(popt_lower[0]) + '\n'  +  '$\Delta$: ' + '{} $\mu eV$'.format(int(popt_lower[1]*10)),
+             bbox=bbox)
     plt.xlabel('$B_{ \parallel}(T)$')
     plt.ylabel('$\Delta E$ $(10\mu eV)$')
 
@@ -201,6 +232,190 @@ def main():
         plt.plot(FG14[0][55:-10], y, c='red', alpha=0.3)
     """
 
+    plt.show()
+
+    return popt_lower, np.sqrt(np.diag(pcov_lower))
+
+B_perp = 1
+
+def linecut_1T():
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "linecuts_1T")
+    file_names = find_hdf5_files(file_dir)
+
+    FG14, Bx, DemodR = load_data(file_names, current_dir)
+    DemodR[0] = np.flip(DemodR[0], axis=1)
+    #DemodR[0] = np.flip(DemodR[0], axis=0)
+
+    # substract background
+    DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
+    #DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
+    #DemodR[2] = np.array([trace - np.mean(trace) for trace in DemodR[2][:, :-1].T]).T
+
+    #for i, map in enumerate(DemodR):
+    #p_low, p_high = np.percentile(DemodR[0], (2, 98))
+    #DemodR[0] = np.clip(DemodR[0], p_low, p_high)
+    DemodR[0] = gaussian_filter1d(DemodR[0], 1, axis=0)
+    #DemodR[0] = normalize(DemodR[0])
+
+    # stitch maps to one
+    start_second = np.argmin(np.abs(np.flip(Bx[0])-0.7845))
+    start_third = np.argmin(np.abs(np.flip(Bx[0])-1.109))
+    start_fourth = np.argmin(np.abs(np.flip(Bx[0])-1.188))
+    start_fifth = np.argmin(np.abs(np.flip(Bx[0])-1.219))
+    start_sixth = np.argmin(np.abs(np.flip(Bx[0])-1.239))
+    start_seventh = np.argmin(np.abs(np.flip(Bx[0])-1.247))
+    first_jump_map = DemodR[0][:, :start_second]
+    second_jump_map = DemodR[0][:, start_second:start_third]
+    third_jump_map = DemodR[0][:, start_third:start_fourth]
+    fourth_jump_map = DemodR[0][:, start_fourth:start_fifth]
+    fifth_jump_map = DemodR[0][:, start_fifth:start_sixth]
+    sixth_jump_map = DemodR[0][:, start_sixth:start_seventh]
+    seventh_jump_map = DemodR[0][:, start_seventh:]
+    map = stitch_maps(first_jump_map, second_jump_map, (5.1880, 5.1879), FG14)
+    #map = stitch_maps(map, second_jump_map, (5.1888, 5.1878), FG14)
+    map = stitch_maps(map, third_jump_map, (5.1880, 5.1878), FG14)
+    map = stitch_maps(map, fourth_jump_map, (5.1880, 5.1879), FG14)
+    map = stitch_maps(map, fifth_jump_map, (5.1880, 5.1878), FG14)
+    map = stitch_maps(map, sixth_jump_map, (5.1880, 5.1879), FG14)
+    map = stitch_maps(map, seventh_jump_map, (5.1880, 5.1878), FG14)
+
+    map = map[:-10]
+    FG14 = FG14[0][:-10]
+
+    # find peaks
+    Bx_full = np.linspace(0, 2, map.shape[1])
+    ny_peaks = []
+    upper_peaks = []
+    lower_peaks = []
+    for i, row in enumerate(map.T):
+        peaks, properties = find_peaks(-row, height=2e-5, width=16)
+        #peaks = find_peaks_cwt(-row, 10)
+        for peak in peaks:
+            if peak > 175 and peak < 225:
+                ny_peaks.append((i, peak))
+        #peaks, properties = find_peaks(-row, height=10e-5, width=20)
+        '''
+        for peak in peaks:
+            if FG14[peak] > f(Bx_full[i], 0.00035, 5.19155) and FG14[peak] < f(Bx_full[i], 0.00035, 5.192):
+                lower_peaks.append((i, peak))
+        '''
+        peaks, properties = find_peaks(-row, height=-5.5e-5, width=11)
+        #peaks = find_peaks_cwt(row, 5)
+        for peak in peaks:
+            if FG14[peak] > f(Bx_full[i], 0.00035, 5.1902) and FG14[peak] < f(Bx_full[i], 0.00035, 5.191):
+                #print(f(Bx_full[i], -0.00035, 5.19095), FG14[0][peak], peak)
+                lower_peaks.append((i, peak))
+
+    # plotting
+    ny_rows, ny_cols = zip(*ny_peaks)
+    #upper_rows, upper_cols = zip(*upper_peaks)
+    lower_rows, lower_cols = zip(*lower_peaks)
+
+    # calculate distances
+    #ny_upper_dist = calc_peak_distance_tuple(ny_peaks, upper_peaks, y_threshold=100)
+    ny_lower_dist = calc_peak_distance_tuple(ny_peaks, lower_peaks, y_threshold=100)
+
+    dFG = FG14[1] - FG14[0]
+
+    #ny_upper_rows, ny_upper_cols = zip(*ny_upper_dist)
+    ny_lower_rows, ny_lower_cols = zip(*ny_lower_dist)
+
+    leverarmFG12 = 0.08488 #eV/V
+    leverarmFG14 = leverarmFG12*(5.196/5.157)
+    a = -1.73301
+    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #10mueV
+    #ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #10mueV
+
+    # fitting
+    #popt_upper, pcov_upper = curve_fit(g, Bx_full[list(ny_upper_rows)], ny_upper_cols)
+    popt_lower, pcov_lower = curve_fit(del_E2, Bx_full[list(ny_lower_rows)], ny_lower_cols)
+
+    #print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]}') #*10**-5
+    print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]}')
+
+    plt.figure(figsize=(12, 8))
+    for trace in map.T:
+        plt.plot(-trace)
+
+    plt.axvline(175)
+    plt.axvline(225)
+
+
+    fig = plt.figure(figsize=(12, 6))
+    im = plt.pcolormesh(Bx_full, FG14,  map, cmap='viridis_r')#, vmin=-0.05, vmax=0.2)
+    #plt.scatter(Bx_full[list(ny_rows)], FG14[list(ny_cols)], facecolors='none', edgecolors='red', alpha=0.5)
+    #plt.scatter(Bx_full[list(upper_rows)], FG14[0][list(upper_cols)], facecolors='none', edgecolors='orange', alpha=0.5)
+    #plt.scatter(Bx_full[list(lower_rows)], FG14[list(lower_cols)], facecolors='none', edgecolors='magenta', alpha=0.5)
+    #plt.axhline(FG14[175], color='red')
+    #plt.axhline(FG14[225], color='red')
+    #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.19155), color='orange')
+    #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.192), color='orange')
+    #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.1903), color='orange')
+    #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.1908), color='orange')
+    plt.ylim(5.1916, 5.186)
+    plt.ylabel('$FG_{14}$')
+    plt.xlabel('$B_{ \parallel}(T)$')
+    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
+    cbar.set_label('$R_{dem} (a.u.)$', loc='left')
+
+    '''
+    plt.figure(figsize=(12, 8))
+    plt.scatter(Bx_full[list(ny_upper_rows)[::3]], ny_upper_cols[::3], color='orangered', marker='.')
+    plt.plot(Bx_full, g(Bx_full, *popt_upper), color='orangered', linestyle='--')
+    plt.ylim(5.5, 11)
+    bbox = dict(boxstyle='round', fc='none', ec='black')
+    plt.text(1.0, 6.5, f'g-factor: {(popt_upper[0]).round(2)} \n     $\Delta$     : {int(popt_upper[1]*10)} $\mu eV$', bbox=bbox)
+    plt.xlabel('$B_{ \parallel}(T)$')
+    plt.ylabel('$\Delta E$ $(10\mu eV)$')
+    '''
+
+    plt.figure(figsize=(12, 8))
+    plt.scatter(Bx_full[list(ny_lower_rows)[::3]], ny_lower_cols[::3], color='mediumblue', marker='.')
+    plt.plot(Bx_full, del_E2(Bx_full, *popt_lower), color='mediumblue', linestyle='--')
+    plt.ylim(7.5, 14)
+    bbox = dict(boxstyle='round', fc='none', ec='black')
+    plt.text(1.25, 8.5,
+             r'$g_{S}$: ' + '{:.2}'.format(popt_lower[0]) + '\n'  +  '$\Delta$: ' + '{} $\mu eV$'.format(int(popt_lower[1]*10)),
+             bbox=bbox)
+    plt.xlabel('$B_{ \parallel}(T)$')
+    plt.ylabel('$\Delta E$ $(10\mu eV)$')
+
+    """
+    plt.figure(figsize=(12, 8))
+    for y in map.T[:20]:
+        plt.plot(FG14[0][55:-10], y, c='red', alpha=0.3)
+    """
+
+    plt.show()
+
+    return popt_lower, np.sqrt(np.diag(pcov_lower))
+
+def main():
+    popt_500mT, pcov_500mT = linecut_500mT()
+    popt_1T, pcov_1T = linecut_1T()
+
+    x = np.array([0.5, 1])
+    y = np.array([popt_500mT[1], popt_1T[1]])
+    y_err = np.array([pcov_500mT[1], pcov_1T[1]])
+
+    def delta(x, delta_SO, g_s):
+        return delta_SO - g_s*mu_b*x
+
+    popt, pcov = curve_fit(delta, xdata=x, ydata=y, sigma=y_err)
+
+    B_perp = np.linspace(0, 1.1, 100)
+
+    plt.figure(figsize=(12, 8))
+    plt.errorbar(x, y, yerr=y_err, linestyle='none', marker='o', markersize=8, mfc='w')
+    plt.plot(B_perp, delta(B_perp, *popt), color='gray', linestyle='--')
+    plt.xlim(0, 1.1)
+    bbox = dict(boxstyle='round', fc='none', ec='black')
+    plt.text(0.7, 12.5,
+             r'$g_{S}$: ' + '{:.2f}'.format(popt[1]) + '\n'  +  '$\Delta_{SO}$: ' + '{} $\mu eV$'.format(int(popt[0]*10)),
+             bbox=bbox)
+    plt.xlabel(r'$B_{\bot}$')
+    plt.ylabel(r'$\Delta_{\nu}$ $(10\mu eV)$')
     plt.show()
 
 

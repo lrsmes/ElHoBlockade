@@ -43,7 +43,7 @@ def main(coloring="band"):
     deltaSV = 0.0 * 10 ** -3
     delta_orb = 1.6
     gs = 2.0
-    gv = 14.0
+    gv = 14
     theta = np.deg2rad(0)
     bfields = np.arange(-.1, 1.5, 0.001)
     eigen_energies, eigen_vectors, eigen_energies_h, eigen_vectors_h, diff = calc_Bfield_dispersion(
@@ -111,7 +111,7 @@ def main(coloring="band"):
     y_valley = np.vstack([diff[:, 3, 2], diff[:, 2, 3]]).T  # Valley
 
     # Now plot each array against bfields
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(12, 6))
     plt.scatter(bfields, y_gs_gs, s=1.0, label='GS-GS')
     plt.scatter(np.repeat(bfields, 2), y_nu.flatten(), s=1.0, label='$\\nu$')
     plt.scatter(np.repeat(bfields, 2), y_alpha.flatten(), s=1.0, label='$\\alpha$')
