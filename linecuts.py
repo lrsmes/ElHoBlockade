@@ -66,6 +66,9 @@ def stitch_maps(arr1, arr2, vals, FG14):
 def f(x, m, b):
     return m*x+b
 
+def lorentzian(x, A, x0, gamma):
+    return A * gamma**2 / ((x-x0)**2 + gamma**2)
+
 def calc_peak_distance_tuple(arr1, arr2, y_threshold=0):
     distance = []
     for i, x in arr1:
@@ -86,8 +89,9 @@ B_perp = 0.5
 def del_E(x, gs, gv, delta_S0):
     return -0.5*gv*mu_b*B_perp+0.5*np.sqrt((gv*mu_b*B_perp)**2-2*delta_S0*gs*mu_b*B_perp+delta_S0**2+(gs*mu_b*x)**2)
 
-def del_E2(x, gs, delta, gv):
-    return -0.5*gv*mu_b*B_perp + 0.5*np.sqrt((delta + gs * mu_b * B_perp)**2 + (gs * mu_b * x) ** 2)
+def del_E2(x, gs, delta):
+    #return -0.5*gv*mu_b*B_perp + 0.5*np.sqrt((delta - gs * mu_b * B_perp)**2 + (gs * mu_b * x) ** 2)
+    return (delta) + np.sqrt((delta) ** 2 + (2 * mu_b * x) ** 2)
 
 def g_lin(x, g, b):
     return 0.5*g*mu_b*x + b
@@ -107,7 +111,7 @@ def linecut_500mT():
     DemodR[2] = np.array([trace - np.mean(trace) for trace in DemodR[2][:, :-1].T]).T
 
     for i, map in enumerate(DemodR):
-        DemodR[i] = gaussian_filter1d(map, 1, axis=1)
+        DemodR[i] = gaussian_filter1d(map, 1, axis=0)
 
     # stitch maps to one
     start_second = np.argmin(np.abs(np.flip(Bx[1])-0.64))
@@ -164,8 +168,8 @@ def linecut_500mT():
     leverarmFG12 = 0.08488 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
     a = -1.73301
-    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #10mueV
-    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #10mueV
+    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(a)**2)*10**5 #10mueV
+    ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(a)**2)*10**5 #10mueV
 
     # fitting
     popt_upper, pcov_upper = curve_fit(del_E2, Bx_full[list(ny_upper_rows)], ny_upper_cols)
@@ -177,8 +181,15 @@ def linecut_500mT():
     print(popt_upper)
 
     plt.figure(figsize=(12, 8))
-    for trace in map.T:
-        plt.plot(-trace)
+    for i, trace in enumerate(map.T):
+        #plt.plot(-trace, color='gray', alpha=0.5)
+        x = np.linspace(185, 225, 40)
+        popt_lorentzian, pcov_lorentzian = curve_fit(lorentzian, x, -trace[185:225])
+        plt.plot(x, lorentzian(x, *popt_lorentzian))
+
+
+    plt.scatter(list(lower_cols), -map[list(lower_cols), list(lower_rows)], facecolors='none', edgecolors='magenta')
+    plt.scatter(list(ny_cols), -map[list(ny_cols), list(ny_rows)], facecolors='none', edgecolors='red')
 
     plt.axvline(175)
     plt.axvline(225)
@@ -323,13 +334,15 @@ def linecut_1T():
 
     leverarmFG12 = 0.08488 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
-    a = -1.73301
-    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #10mueV
+    a = -1.95881
+    ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(a)**2)*10**5 #10mueV
     #ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(1/a)**2)*10**5 #10mueV
 
     # fitting
     #popt_upper, pcov_upper = curve_fit(g, Bx_full[list(ny_upper_rows)], ny_upper_cols)
     popt_lower, pcov_lower = curve_fit(del_E2, Bx_full[list(ny_lower_rows)], ny_lower_cols)
+
+    print(np.sqrt(np.diag(pcov_lower)))
 
     #print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]}') #*10**-5
     print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]}')
@@ -393,11 +406,15 @@ def linecut_1T():
 
 def main():
     popt_500mT, pcov_500mT = linecut_500mT()
+
+    '''
     popt_1T, pcov_1T = linecut_1T()
 
     x = np.array([0.5, 1])
     y = np.array([popt_500mT[1], popt_1T[1]])
     y_err = np.array([pcov_500mT[1], pcov_1T[1]])
+
+    print(y, y_err)
 
     def delta(x, delta_SO, g_s):
         return delta_SO - g_s*mu_b*x
@@ -417,6 +434,7 @@ def main():
     plt.xlabel(r'$B_{\bot}$')
     plt.ylabel(r'$\Delta_{\nu}$ $(10\mu eV)$')
     plt.show()
+    '''
 
 
 if __name__ == "__main__":

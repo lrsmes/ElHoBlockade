@@ -1,6 +1,10 @@
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+
+current_dir = os.getcwd()
+file_dir = os.path.join(current_dir, "figures")
 
 mub = 0.05788  # meV/T
 
@@ -10,7 +14,7 @@ def hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb,bpar
     ezv = 0.5 * mub * gv * bortho
     esz = 0.5 * mub * gs * bortho
     ham = np.array([[0.5 * deltaSO + ezv + esz + delta_orb, 0.5 * gs * mub * bpara, deltaKK, deltaSV],  # K up
-                    [0.5 * gs * mub * bpara, -0.5 * deltaSO + ezv - esz +delta_orb, deltaSV, deltaKK],  # K down
+                    [0.5 * gs * mub * bpara, -0.5 * deltaSO + ezv - esz + delta_orb, deltaSV, deltaKK],  # K down
                     [deltaKK, deltaSV, -0.5 * deltaSO - ezv + esz + delta_orb, 0.5 * gs * mub * bpara],  # K' up
                     [deltaSV, deltaKK, 0.5 * gs * mub * bpara, 0.5 * deltaSO - ezv - esz + delta_orb]])  # K' down
     return ham
@@ -114,7 +118,7 @@ def main(coloring="band"):
     plt.figure(figsize=(12, 6))
     plt.scatter(bfields, y_gs_gs, s=1.0, label='GS-GS')
     plt.scatter(np.repeat(bfields, 2), y_nu.flatten(), s=1.0, label='$\\nu$')
-    plt.scatter(np.repeat(bfields, 2), y_alpha.flatten(), s=1.0, label='$\\alpha$')
+    #plt.scatter(np.repeat(bfields, 2), y_alpha.flatten(), s=1.0, label='$\\alpha$')
     plt.scatter(np.repeat(bfields, 2), y_beta.flatten(), s=1.0, label='$\\beta$')
     #plt.scatter(np.repeat(bfields, 4), y_gamma.flatten(), s=1.0, label='$\\gamma$')
     plt.scatter(np.repeat(bfields, 3), y_spin_valley.flatten(), s=1.0, label='Spin-Valley')
@@ -122,7 +126,7 @@ def main(coloring="band"):
     plt.xlabel('B-field (T)')
     plt.ylabel('$\Delta E$ (meV)')
     plt.legend(loc='upper right', markerscale=2.5)
-    plt.show()
+    plt.savefig(os.path.join(file_dir, r'energy_diagram_500mT.svg'))
 
 
 if __name__ == "__main__":
