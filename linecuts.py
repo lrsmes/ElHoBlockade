@@ -134,6 +134,8 @@ def linecut_500mT():
     # find peaks
     Bx_full = np.linspace(0, 1.5, map.shape[1])
     ny_peaks = []
+    shoulder1_peaks = []
+    shoulder2_peaks = []
     upper_peaks = []
     lower_peaks = []
     for i, row in enumerate(map.T):
@@ -141,6 +143,14 @@ def linecut_500mT():
         for peak in peaks:
             if peak > 185 and peak < 215:
                 ny_peaks.append((i, peak))
+        peaks, properties = find_peaks(-row, height=-0.3e-5, width=8)
+        for peak in peaks:
+            if peak > 160 and peak < 190:
+                shoulder1_peaks.append((i, peak))
+        peaks, properties = find_peaks(-row, height=-0.3e-5, width=8)
+        for peak in peaks:
+            if peak > 215 and peak < 240:
+                shoulder2_peaks.append((i, peak))
         peaks, properties = find_peaks(-row, height=-1e-5, width=13)
         for peak in peaks:
             if FG14[0][peak] > f(Bx_full[i], 0.00035, 5.1915) and FG14[0][peak] < f(Bx_full[i], 0.00035, 5.192):
@@ -155,21 +165,29 @@ def linecut_500mT():
     ny_rows, ny_cols = zip(*ny_peaks)
     upper_rows, upper_cols = zip(*upper_peaks)
     lower_rows, lower_cols = zip(*lower_peaks)
+    shoulder1_rows, shoulder1_cols = zip(*shoulder1_peaks)
+    shoulder2_rows, shoulder2_cols = zip(*shoulder2_peaks)
 
     # calculate distances
     ny_upper_dist = calc_peak_distance_tuple(ny_peaks, upper_peaks, y_threshold=20)
     ny_lower_dist = calc_peak_distance_tuple(ny_peaks, lower_peaks, y_threshold=20)
+    ny_shoulder1_dist = calc_peak_distance_tuple(ny_peaks, shoulder1_peaks, y_threshold=20)
+    ny_shoulder2_dist = calc_peak_distance_tuple(ny_peaks, shoulder2_peaks, y_threshold=20)
 
     dFG = FG14[0][1] - FG14[0][0]
 
     ny_upper_rows, ny_upper_cols = zip(*ny_upper_dist)
     ny_lower_rows, ny_lower_cols = zip(*ny_lower_dist)
+    ny_shoulder1_rows, ny_shoulder1_cols = zip(*ny_shoulder1_dist)
+    ny_shoulder2_rows, ny_shoulder2_cols = zip(*ny_shoulder2_dist)
 
     leverarmFG12 = 0.08488 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
     a = -1.73301
     ny_lower_cols = (np.array(ny_lower_cols)*dFG)*leverarmFG14*np.sqrt(1+(a)**2)*10**5 #10mueV
     ny_upper_cols = (np.array(ny_upper_cols)*dFG)*leverarmFG14*np.sqrt(1+(a)**2)*10**5 #10mueV
+    ny_shoulder1_cols = (np.array(ny_shoulder1_cols) * dFG) * leverarmFG14 * np.sqrt(1 + (a) ** 2) * 10 ** 5  # 10mueV
+    ny_shoulder2_cols = (np.array(ny_shoulder2_cols) * dFG) * leverarmFG14 * np.sqrt(1 + (a) ** 2) * 10 ** 5  # 10mueV
 
     # fitting
     popt_upper, pcov_upper = curve_fit(del_E2, Bx_full[list(ny_upper_rows)], ny_upper_cols)
@@ -182,26 +200,37 @@ def linecut_500mT():
 
     plt.figure(figsize=(12, 8))
     for i, trace in enumerate(map.T):
-        #plt.plot(-trace, color='gray', alpha=0.5)
-        x = np.linspace(185, 225, 40)
-        popt_lorentzian, pcov_lorentzian = curve_fit(lorentzian, x, -trace[185:225])
-        plt.plot(x, lorentzian(x, *popt_lorentzian))
+        if i<100:
+            plt.plot(-trace, alpha=0.5)
+            x = np.linspace(185, 225, 40)
+            #popt_lorentzian, pcov_lorentzian = curve_fit(lorentzian, x, -trace[185:225])
+            #plt.plot(x, lorentzian(x, *popt_lorentzian))
 
 
-    plt.scatter(list(lower_cols), -map[list(lower_cols), list(lower_rows)], facecolors='none', edgecolors='magenta')
-    plt.scatter(list(ny_cols), -map[list(ny_cols), list(ny_rows)], facecolors='none', edgecolors='red')
+    plt.scatter(list(lower_cols), -map[list(lower_cols), list(lower_rows)], facecolors='none',
+                edgecolors='magenta')
+    plt.scatter(list(ny_cols), -map[list(ny_cols), list(ny_rows)], facecolors='none',
+                edgecolors='red')
+    plt.scatter(list(shoulder1_cols), -map[list(shoulder1_cols), list(shoulder1_rows)], facecolors='none',
+                edgecolors='yellow')
+    plt.scatter(list(shoulder2_cols), -map[list(shoulder2_cols), list(shoulder2_rows)], facecolors='none',
+                edgecolors='yellow')
 
-    plt.axvline(175)
-    plt.axvline(225)
+    plt.axvline(215)
+    plt.axvline(245)
 
     plt.ylim(-2*10**-5, 2*10**-5)
 
 
     fig = plt.figure(figsize=(12, 6))
-    im = plt.pcolormesh(Bx_full, FG14[0],  map, vmin=-10e-6, vmax=10e-6)
+    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='viridis_r', vmin=-7.5e-6, vmax=7.5e-6)
     #plt.scatter(Bx_full[list(ny_rows)], FG14[0][list(ny_cols)], facecolors='none', edgecolors='red', alpha=0.5)
     #plt.scatter(Bx_full[list(upper_rows)], FG14[0][list(upper_cols)], facecolors='none', edgecolors='orange', alpha=0.5)
     #plt.scatter(Bx_full[list(lower_rows)], FG14[0][list(lower_cols)], facecolors='none', edgecolors='magenta', alpha=0.5)
+    plt.scatter(Bx_full[list(shoulder1_rows)], FG14[0][list(shoulder1_cols)], facecolors='none', edgecolors='yellow',
+                alpha=0.5)
+    plt.scatter(Bx_full[list(shoulder2_rows)], FG14[0][list(shoulder2_cols)], facecolors='none', edgecolors='yellow',
+                alpha=0.5)
     #plt.axhline(FG14[0][175], color='red')
     #plt.axhline(FG14[0][225], color='red')
     #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.1914), color='orange')
@@ -234,6 +263,15 @@ def linecut_500mT():
     plt.text(1.0, 6.5,
              r'$g_{S}$: ' + '{:.2}'.format(popt_lower[0]) + '\n'  +  '$\Delta$: ' + '{} $\mu eV$'.format(int(popt_lower[1]*10)),
              bbox=bbox)
+    plt.xlabel('$B_{ \parallel}(T)$')
+    plt.ylabel('$\Delta E$ $(10\mu eV)$')
+
+    plt.figure(figsize=(12, 8))
+    plt.scatter(Bx_full[list(ny_shoulder1_rows)[1::3]], ny_shoulder1_cols[1::3],
+                facecolors='none', edgecolors='mediumblue')
+    plt.scatter(Bx_full[list(ny_shoulder2_rows)[::3]], ny_shoulder2_cols[::3],
+                facecolors='none', edgecolors='orangered')
+    #plt.ylim(5, 12)
     plt.xlabel('$B_{ \parallel}(T)$')
     plt.ylabel('$\Delta E$ $(10\mu eV)$')
 
@@ -348,15 +386,23 @@ def linecut_1T():
     print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]}')
 
     plt.figure(figsize=(12, 8))
-    for trace in map.T:
-        plt.plot(-trace)
+    for i, trace in enumerate(map.T):
+        plt.plot(-trace, color='gray', alpha=0.5)
+        x = np.linspace(185, 225, 40)
+        #popt_lorentzian, pcov_lorentzian = curve_fit(lorentzian, x, -trace[185:225])
+        #plt.plot(x, lorentzian(x, *popt_lorentzian))
+
+
+    plt.scatter(list(lower_cols), -map[list(lower_cols), list(lower_rows)], facecolors='none', edgecolors='magenta')
+    plt.scatter(list(ny_cols), -map[list(ny_cols), list(ny_rows)], facecolors='none', edgecolors='red')
+    #plt.scatter(list(lower_cols), -map[list(lower_cols), list(lower_rows)], facecolors='none', edgecolors='magenta')
 
     plt.axvline(175)
     plt.axvline(225)
 
 
     fig = plt.figure(figsize=(12, 6))
-    im = plt.pcolormesh(Bx_full, FG14,  map, cmap='viridis_r')#, vmin=-0.05, vmax=0.2)
+    im = plt.pcolormesh(Bx_full, FG14,  map, cmap='viridis_r', vmin=-4.5*10**-5, vmax=4.5*10**-5)
     #plt.scatter(Bx_full[list(ny_rows)], FG14[list(ny_cols)], facecolors='none', edgecolors='red', alpha=0.5)
     #plt.scatter(Bx_full[list(upper_rows)], FG14[0][list(upper_cols)], facecolors='none', edgecolors='orange', alpha=0.5)
     #plt.scatter(Bx_full[list(lower_rows)], FG14[list(lower_cols)], facecolors='none', edgecolors='magenta', alpha=0.5)
@@ -406,10 +452,9 @@ def linecut_1T():
 
 def main():
     popt_500mT, pcov_500mT = linecut_500mT()
+    #popt_1T, pcov_1T = linecut_1T()
 
     '''
-    popt_1T, pcov_1T = linecut_1T()
-
     x = np.array([0.5, 1])
     y = np.array([popt_500mT[1], popt_1T[1]])
     y_err = np.array([pcov_500mT[1], pcov_1T[1]])
