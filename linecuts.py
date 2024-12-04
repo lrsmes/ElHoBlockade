@@ -223,7 +223,7 @@ def linecut_500mT():
 
 
     fig = plt.figure(figsize=(12, 6))
-    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='viridis_r', vmin=-7.5e-6, vmax=7.5e-6)
+    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='Greys', vmin=-7.5e-6, vmax=7.5e-6)
     #plt.scatter(Bx_full[list(ny_rows)], FG14[0][list(ny_cols)], facecolors='none', edgecolors='red', alpha=0.5)
     #plt.scatter(Bx_full[list(upper_rows)], FG14[0][list(upper_cols)], facecolors='none', edgecolors='orange', alpha=0.5)
     #plt.scatter(Bx_full[list(lower_rows)], FG14[0][list(lower_cols)], facecolors='none', edgecolors='magenta', alpha=0.5)
@@ -450,7 +450,53 @@ def linecut_1T():
 
     return popt_lower, np.sqrt(np.diag(pcov_lower))
 
+def linecut_0T():
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "linecuts_0T")
+    file_names = find_hdf5_files(file_dir)
+
+    FG14, Bx, DemodR = load_data(file_names, current_dir)
+    #DemodR[0] = np.flip(DemodR[0], axis=1)
+    #DemodR[1] = np.flip(DemodR[1], axis=1)
+
+    for i, map in enumerate(DemodR):
+        DemodR[i] = np.array([trace - np.mean(trace) for trace in map.T]).T
+        #DemodR[i] = np.array([detrend(trace) for trace in map])
+        #DemodR[i] = gaussian_filter1d(map, 1, axis=0)
+
+    end_first = np.argmin(np.abs(Bx[0]-1.0))
+    end_second = np.argmin(np.abs(Bx[1]-1.3))
+    first_map = DemodR[0][:, :end_first]
+    second_map = DemodR[1][:, :end_second]
+
+    map = stitch_maps(first_map, second_map, (5.18344, 5.18344), FG14)
+
+    Bx_full = np.linspace(-0.25, 1.3, map.shape[1])
+
+    edge = []
+
+    for i, row in enumerate(map.T):
+        peaks, properties = find_peaks(row)#, height=1e-5, width=16)
+        edge.append(peaks)
+
+    edge_rows, edge_cols = zip(*edge)
+
+    plt.figure(figsize=(12, 8))
+    for i, trace in enumerate(map.T):
+        plt.plot(trace, color='gray', alpha=0.5)
+    #plt.scatter(list(edge_cols), -map[list(edge_cols), list(edge_rows)], facecolors='none', edgecolors='red')
+
+    plt.figure(figsize=(12, 6))
+    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='seismic')#, vmin=-7.5e-4, vmax=7.5e-4)
+    plt.show()
+
+
+
+
+
+
 def main():
+    #linecut_0T()
     popt_500mT, pcov_500mT = linecut_500mT()
     #popt_1T, pcov_1T = linecut_1T()
 
