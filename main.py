@@ -24,10 +24,11 @@ def y_tuple(tread, FG14, diff, off, pulse_dir):
         print(FG14_temp[70], FG14_temp[150])
     return (lower, upper)
 
-def get_offset(tread, FG14, y_cut, pulse_dir):
+# Calculate the offset on the FG14 axis for a give tread time
+def get_offset(tread, tini, fac, FG14, y_cut, pulse_dir):
     FG14_temp = np.flip(FG14[0])
     FG14_val = FG14_temp[y_cut]
-    FG14_off = FG14_val - pulse_dir*0.0055*((tread-5000)/(tread+5000))
+    FG14_off = FG14_val - pulse_dir*fac*((tread-tini)/(tread+tini))
     return FG14_off
 def load_data(file_name, group, dataset, channels, all_maps_pos, all_maps_neg):
     channel_data = helper.read_file(file_name, group, dataset, channels, information=False)
@@ -855,13 +856,47 @@ def both_dir_500mT():
         ratios_blockade.append(r)
         ratios_err_blockade.append(err)
 
+def both_dir_400mT():
+    # Get the current working directory
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "400mT_both_dir")
+    file_names = find_hdf5_files(file_dir)
+
+    group = "Data"
+    dataset = "Data/Data"
+    channels = "Data/Channel names"
+
+    ratios_transport = []
+    ratios_err_transport = []
+    ratios_blockade = []
+    ratios_err_blockade = []
+    all_maps_blockade = []
+    all_maps_transport = []
+
+    for file in file_names:
+        # Load the data in the given file
+        all_maps_blockade, all_maps_transport = load_data(file, group, dataset, channels, all_maps_blockade, all_maps_transport)
+
+    ###########
+    # Blockade
+    ###########
+    print('###################### blockade #########################')
+    off = get_offset(1000, 1500, 0.0005, all_maps_blockade[0][0], 80, 1)
+    for i, map in enumerate(all_maps_blockade):
+        r, err = process_data(map, y_tuple(map[-1], map[-2], 20, off, 1), (50, 50), #+10
+                              file_dir, 1, True, 0.35, 0.18)
+        ratios_blockade.append(r)
+        ratios_err_blockade.append(err)
+
+
 
 def main():
     # regime_tl_larger_ti()
-    regime_ti_larger_tl_1T()
+    #regime_ti_larger_tl_1T()
     #regime_ti_larger_tl_450mT()
     # regime_ti_larger_tl_200mT()
     #both_dir_500mT()
+    both_dir_400mT()
 
 if __name__ == "__main__":
     main()
