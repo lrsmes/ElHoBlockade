@@ -544,7 +544,7 @@ def define_resonances_tp(dem_R, FG_12, FG_14, file_dir, tread, pulse_dir,
               np.round(np.std(dem_R_non_blockade_flatten), 3))
 
         R_alpha = np.mean(dem_R_alpha_flatten) / np.mean(dem_R_non_blockade_flatten)
-        uncertainty_R_alpha = np.sqrt(R_ny ** 2 * ((np.std(dem_R_alpha_flatten) / np.mean(dem_R_alpha_flatten)) ** 2 + (
+        uncertainty_R_alpha = np.sqrt(R_alpha ** 2 * ((np.std(dem_R_alpha_flatten) / np.mean(dem_R_alpha_flatten)) ** 2 + (
                 np.std(dem_R_non_blockade_flatten) / np.mean(dem_R_non_blockade_flatten)) ** 2))
 
         print('Ratio: ', np.round(R_alpha, 3), " +- ",

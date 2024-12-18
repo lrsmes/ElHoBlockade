@@ -11,10 +11,10 @@ from utils import substract_linear_BG, define_resonances_tp, get_value_range, ge
 from scipy import constants
 from auto_fit import fit_with_derivative
 
-def y_tuple(tread, FG14, diff, off, pulse_dir):
+def y_tuple(tread, tini, fac, FG14, diff, off, pulse_dir):
     FG14_temp = np.flip(FG14[0])
     step = np.abs(FG14_temp[1]-FG14_temp[0])
-    FG14_val = off+pulse_dir*0.0055*((tread-5000)/(tread+5000))
+    FG14_val = off+pulse_dir*fac*((tread-tini)/(tread+tini))
     find_val = np.abs(FG14_temp-FG14_val)
     lower = np.abs(FG14_temp-FG14_val).argmin()
     if lower == 0:
@@ -881,9 +881,9 @@ def both_dir_400mT():
     # Blockade
     ###########
     print('###################### blockade #########################')
-    off = get_offset(1000, 1500, 0.0005, all_maps_blockade[0][0], 80, 1)
+    off = get_offset(1000, 1500, 0.005, all_maps_blockade[0][0], 80, 1)
     for i, map in enumerate(all_maps_blockade):
-        r, err = process_data(map, y_tuple(map[-1], map[-2], 20, off, 1), (50, 50), #+10
+        r, err = process_data(map, y_tuple(map[-1],  1500, 0.005, map[-2],20, off, 1), (50, 50), #+10
                               file_dir, 1, True, 0.35, 0.18)
         ratios_blockade.append(r)
         ratios_err_blockade.append(err)
