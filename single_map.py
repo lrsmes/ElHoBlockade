@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from Data_analysis_and_transforms import evaluate_poly_background_2d
 
 class SingleMap:
     def __init__(self, FG12=None, FG14=None, Demod1R=None, tini=None, tread=None, pulse_dir=None, comp_fac=None, mode=None):
@@ -6,8 +8,8 @@ class SingleMap:
         Initialize the SingleMap class with optional parameters.
 
         Parameters:
-            FG12 (any): Optional input parameter FG12.
-            FG14 (any): Optional input parameter FG14.
+            FG12 (np.array): Finger gate voltage FG12.
+            FG14 (np.array): Finger gate voltage FG14.
             Demod1R (np.ndarray): 2D numpy array representing the map.
             tini (float): Initial time parameter.
             tread (float): Reading time parameter.
@@ -141,7 +143,12 @@ class SingleMap:
         Parameters:
             reg (bool): Whether to include regions in the plot.
         """
-        pass
+        fig = plt.figure()
+        return fig
+
+    def substract_background(self):
+        background = evaluate_poly_background_2d(self.FG12, self.FG14, self.map, 1, 0)
+        self.map = self.map - background
 
 
 def find_intersection(line1, line2):
