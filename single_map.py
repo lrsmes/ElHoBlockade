@@ -143,12 +143,26 @@ class SingleMap:
         Parameters:
             reg (bool): Whether to include regions in the plot.
         """
-        fig = plt.figure()
+        fig = plt.figure(figsize=(12,12))
+        im = plt.imshow(self.map, vmin=0, vmax=1)
+        plt.colorbar('virdis_r')
+        plt.xlabel('$FG_12$')
+        plt.ylabel('$FG_14$')
+        plt.xticks(ticks=range(self.map.shape[0]), labels=self.FG12[::20])
+        plt.xticks(ticks=range(self.map.shape[1]), labels=self.FG14[::20])
+
         return fig
 
     def substract_background(self):
+        """
+        Subtracts a polynomial background from the map and normalizes the result.
+        """
+        # Substract background
         background = evaluate_poly_background_2d(self.FG12, self.FG14, self.map, 1, 0)
         self.map = self.map - background
+        # Normalize
+        min_bin, max_bin = get_value_range(self.map)
+        self.map = (self.map - min_bin) / (max_bin - min_bin)
 
 
 def find_intersection(line1, line2):
@@ -213,3 +227,18 @@ def is_point_in_quadrilateral(x, y, quadrilateral):
     triangle1 = [quadrilateral[0], quadrilateral[1], quadrilateral[2]]
     triangle2 = [quadrilateral[2], quadrilateral[3], quadrilateral[0]]
     return is_point_in_triangle(x, y, triangle1) or is_point_in_triangle(x, y, triangle2)
+
+def get_value_range(map):
+    hist, bins = np.histogram(map.flatten(), bins=1000)
+    bins = bins[1::]
+
+    count_threshold = 10
+    condition = np.where(hist > count_threshold)
+    bins_temp = bins[condition]
+
+    range_width = abs(np.min(bins_temp) - np.max(bins_temp))
+    pad = 0.1
+    min_bin = np.min(bins_temp) - pad * range_width
+    max_bin = np.max(bins_temp) + pad * range_width
+
+    return min_bin, max_bin
