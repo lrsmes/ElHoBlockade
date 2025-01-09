@@ -17,8 +17,8 @@ class SingleMap:
             comp_fac (any): Compensation factor.
             mode (int): Mode for region splitting and ratio calculation.
         """
-        self.FG12 = FG12
-        self.FG14 = FG14
+        self.FG12 = FG12[0]
+        self.FG14 = FG14[:0]
         self.map = Demod1R
         self.tini = tini
         self.tread = tread
@@ -37,12 +37,15 @@ class SingleMap:
             lines (list of tuples): A list of four lines, each defined by slope-intercept form (m, b)
                                     for the equation y = mx + b.
         """
+        # Convert lines from FG12/FG14 space to self.map indices
+        lines_in_map = [self.convert_line_to_map(line) for line in lines]
+
         # Find intersection points of the lines
         intersections = [
-            find_intersection(lines[i], lines[j])
-            for i in range(len(lines))
-            for j in range(i + 1, len(lines))
-            if find_intersection(lines[i], lines[j])
+            find_intersection(lines_in_map[i], lines_in_map[j])
+            for i in range(len(lines_in_map))
+            for j in range(i + 1, len(lines_in_map))
+            if find_intersection(lines_in_map[i], lines_in_map[j])
         ]
 
         # Filter unique intersection points
@@ -164,6 +167,30 @@ class SingleMap:
         min_bin, max_bin = get_value_range(self.map)
         self.map = (self.map - min_bin) / (max_bin - min_bin)
 
+    def convert_line_to_map(self, line):
+        """
+        Convert a line from FG12/FG14 space to map index space.
+
+        Parameters:
+            line (tuple): Line defined by slope-intercept form (m, b) in FG12/FG14 space.
+
+        Returns:
+            tuple: Line defined in map index space.
+        """
+        m, b = line
+
+        # Calculate scaling factors for FG12 and FG14 to map indices
+        scale_FG14 = (self.FG14[-1] - self.FG14[0]) / (len(self.FG14) - 1)  # Scaling for FG14
+        scale_FG12 = (self.FG12[-1] - self.FG12[0]) / (len(self.FG12) - 1)  # Scaling for FG12
+
+        # Convert slope (m) to map index space
+        m_map = m * scale_FG14 / scale_FG12
+
+        # Convert intercept (b) to map index space
+        b_map = (b - self.FG12[0]) * scale_FG12
+
+        return m_map, b_map
+
 
 def find_intersection(line1, line2):
     """
@@ -242,3 +269,5 @@ def get_value_range(map):
     max_bin = np.max(bins_temp) + pad * range_width
 
     return min_bin, max_bin
+
+

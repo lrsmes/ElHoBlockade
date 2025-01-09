@@ -10,6 +10,7 @@ from scipy.stats import skewnorm
 from utils import substract_linear_BG, define_resonances_tp, get_value_range, get_single_map, find_hdf5_files, get_slopes, exponential_model
 from scipy import constants
 from auto_fit import fit_with_derivative
+from single_map import SingleMap
 
 def y_tuple(tread, tini, fac, FG14, diff, off, pulse_dir):
     FG14_temp = np.flip(FG14[0])
@@ -880,13 +881,13 @@ def both_dir_400mT():
     ###########
     # Blockade
     ###########
-    print('###################### blockade #########################')
-    off = get_offset(1000, 1500, 0.005, all_maps_blockade[0][0], 80, 1)
-    for i, map in enumerate(all_maps_blockade):
-        r, err = process_data(map, y_tuple(map[-1],  1500, 0.005, map[-2],20, off, 1), (50, 50), #+10
-                              file_dir, 1, True, 0.35, 0.18)
-        ratios_blockade.append(r)
-        ratios_err_blockade.append(err)
+    print('###################### Blockade #########################')
+    test = SingleMap(all_maps_blockade[6][1], all_maps_blockade[6][2], all_maps_blockade[6][0],
+                     1000, all_maps_blockade[6][3], 1, 0.0055, 1)
+    test.add_triangle(lines=[(-0.8, 9.415), (-0.8, 9.423), (-10.15, 5782), (-10.5, 57.87)])
+    test.plot_map()
+
+
 
 
 
