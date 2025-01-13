@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from Data_analysis_and_transforms import evaluate_poly_background_2d
+from Data_analysis_and_transforms import evaluate_poly_background_2d, correct_median_diff
+from scipy.ndimage import gaussian_filter
 
 class SingleMap:
     def __init__(self, FG12=None, FG14=None, Demod1R=None, tini=None, tread=None, pulse_dir=None, comp_fac=None, mode=None):
@@ -17,8 +18,8 @@ class SingleMap:
             comp_fac (any): Compensation factor.
             mode (int): Mode for region splitting and ratio calculation.
         """
-        self.FG12 = FG12[0]
-        self.FG14 = FG14[:0]
+        self.FG12 = FG12
+        self.FG14 = FG14
         self.map = Demod1R
         self.tini = tini
         self.tread = tread
@@ -147,12 +148,14 @@ class SingleMap:
             reg (bool): Whether to include regions in the plot.
         """
         fig = plt.figure(figsize=(12,12))
-        im = plt.imshow(self.map, vmin=0, vmax=1)
-        plt.colorbar('virdis_r')
-        plt.xlabel('$FG_12$')
-        plt.ylabel('$FG_14$')
-        plt.xticks(ticks=range(self.map.shape[0]), labels=self.FG12[::20])
-        plt.xticks(ticks=range(self.map.shape[1]), labels=self.FG14[::20])
+        im = plt.imshow(self.map.T, vmin=0, vmax=1)
+        im.set_cmap('viridis')
+        plt.xlabel('$FG_{14}$')
+        plt.ylabel('$FG_{12}$')
+        plt.ylim(0, 151)
+        #plt.xticks(ticks=range(self.map.shape[0]), labels=self.FG12[::20])
+        #plt.xticks(ticks=range(self.map.shape[1]), labels=self.FG14[::20])
+        plt.show()
 
         return fig
 
@@ -161,11 +164,51 @@ class SingleMap:
         Subtracts a polynomial background from the map and normalizes the result.
         """
         # Substract background
-        background = evaluate_poly_background_2d(self.FG12, self.FG14, self.map, 1, 0)
-        self.map = self.map - background
+        #background = evaluate_poly_background_2d(self.FG14, self.FG12, self.map, 0, 2)
+        #corrected = correct_median_diff(self.map)
+        #self.map = self.map - background
+        for i, row in enumerate(self.map.T):
+            self.map.T[i] = row - 0.0095 * self.FG14[:, 0]
+        self.map = gaussian_filter(self.map, sigma=(0.5, 0.5))
         # Normalize
         min_bin, max_bin = get_value_range(self.map)
         self.map = (self.map - min_bin) / (max_bin - min_bin)
+
+    def subtract_linear_background(self):
+        """
+        Subtract a linear background from the 2D map.
+
+        This method fits a linear plane to the data in self.map and subtracts it,
+        leaving the residuals as the new self.map.
+        """
+        # Get the dimensions of the map
+        rows, cols = self.map.shape
+
+        # Create a meshgrid for the indices
+        y, x = np.meshgrid(np.arange(rows), np.arange(cols), indexing='ij')
+
+        # Flatten the map and meshgrid for linear fitting
+        x_flat = x.ravel()
+        y_flat = y.ravel()
+        z_flat = self.map.ravel()
+
+        # Create the design matrix for linear regression (plane fitting)
+        A = np.column_stack((x_flat, y_flat, np.ones_like(x_flat)))
+
+        # Fit a plane to the data using least squares
+        coeffs, _, _, _ = np.linalg.lstsq(A, z_flat, rcond=None)
+
+        # Reconstruct the plane (background)
+        z_fit = A @ coeffs
+        background = z_fit.reshape(rows, cols)
+
+        # Subtract the background from the map
+        self.map = self.map - background
+
+        # Optionally normalize the map after subtraction
+        self.map = (self.map - np.min(self.map)) / (np.max(self.map) - np.min(self.map))
+
+        return background  # Return the subtracted background if needed
 
     def convert_line_to_map(self, line):
         """
@@ -179,15 +222,19 @@ class SingleMap:
         """
         m, b = line
 
+        # Extract first row of FG12 and first column of FG14
+        FG12_axis = self.FG12[0, :]  # First row of FG12
+        FG14_axis = self.FG14[:, 0]  # First column of FG14
+
         # Calculate scaling factors for FG12 and FG14 to map indices
-        scale_FG14 = (self.FG14[-1] - self.FG14[0]) / (len(self.FG14) - 1)  # Scaling for FG14
-        scale_FG12 = (self.FG12[-1] - self.FG12[0]) / (len(self.FG12) - 1)  # Scaling for FG12
+        scale_FG14 = (FG14_axis[-1] - FG14_axis[0]) / (len(FG14_axis) - 1)  # Scaling for FG14
+        scale_FG12 = (FG12_axis[-1] - FG12_axis[0]) / (len(FG12_axis) - 1)  # Scaling for FG12
 
         # Convert slope (m) to map index space
         m_map = m * scale_FG14 / scale_FG12
 
         # Convert intercept (b) to map index space
-        b_map = (b - self.FG12[0]) * scale_FG12
+        b_map = (b - FG12_axis[0]) * scale_FG12
 
         return m_map, b_map
 
