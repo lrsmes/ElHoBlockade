@@ -22,7 +22,7 @@ class SingleMap:
         """
         self.FG12 = FG12
         self.FG14 = FG14
-        self.map = pd.DataFrame(Demod1R, index=FG14[:, 0], columns=FG12[0, :]).T
+        self.map = pd.DataFrame(Demod1R.T, index=FG12[0, :], columns=FG14[:, 0])
         self.tini = tini
         self.tread = tread
         self.pulse_dir = pulse_dir
