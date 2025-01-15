@@ -882,15 +882,28 @@ def both_dir_400mT():
     # Blockade
     ###########
     print('###################### Blockade #########################')
-    test = SingleMap(all_maps_blockade[6][1], all_maps_blockade[6][2], all_maps_blockade[6][0],
-                     1000, all_maps_blockade[6][3], 1, 0.0055, 1)
-    test.add_triangle(lines=[(-0.8, 9.415), (-0.8, 9.423), (-10.15, 57.82), (-10.15, 57.87)])
+    test_12 = SingleMap(all_maps_blockade[6][1], all_maps_blockade[6][2], all_maps_blockade[6][0],
+                     1500, all_maps_blockade[6][3], 1, 0.0052, 1)
+    test_12.add_triangle(lines=[(-0.885, 9.853), (-0.885, 9.846), (-12, 67.419), (-12, 67.4635)])
     #test.substract_background()
-    test.substract_background()
-    test.plot_map()
-    r, sigma_r = test.get_ratio()
-    print(r, sigma_r)
+    test_12.subtract_background()
+    test_12.plot_map()
+    r_12, sigma_r_12 = test_12.get_ratio()
+    print(r_12, sigma_r_12)
 
+    test_40 = SingleMap(all_maps_blockade[-1][1], all_maps_blockade[-1][2], all_maps_blockade[-1][0],
+                     1500, all_maps_blockade[-1][3], 1, 0.0052, 1)
+    del_x = delta_x(40000, 1500, 0.0055)
+    test_40.add_triangle(lines=[(-0.885, y(del_x, -0.885, 9.853)), (-0.885, y(del_x, -0.885, 9.846)),
+                                (-12, y(del_x, -12, 67.419)), (-12, y(del_x, -12, 67.4635))])
+    test_40.subtract_background()
+    test_40.plot_map()
+
+def delta_x(tread, tini, comp_fac):
+    return -0.05*comp_fac*((tread-tini)/(tread+tini))
+
+def y(x, m, b):
+    return m*x + b
 
 
 

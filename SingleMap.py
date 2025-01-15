@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.ndimage import gaussian_filter
+from skimage.transform import hough_line, hough_line_peaks
 
 
 class SingleMap:
@@ -20,14 +21,15 @@ class SingleMap:
             comp_fac (any): Compensation factor.
             mode (int): Mode for region splitting and ratio calculation.
         """
-        self.FG12 = FG12
-        self.FG14 = FG14
-        self.map = pd.DataFrame(Demod1R.T, index=FG12[0, :], columns=FG14[:, 0])
+        self.FG12 = FG12[0, :] if FG12 is not None else None
+        self.FG14 = FG14[:, 0] if FG14 is not None else None
+        self.map = Demod1R.T if Demod1R is not None else None
         self.tini = tini
         self.tread = tread
         self.pulse_dir = pulse_dir
         self.comp_fac = comp_fac
         self.mode = mode
+        self.lines = None
         self.transport_triangle = None
         self.blockade_triangle = None
         self.transport_mask = None
@@ -42,6 +44,8 @@ class SingleMap:
             lines (list of tuples): A list of four lines, each defined by slope-intercept form (m, b)
                                     for the equation y = mx + b.
         """
+        self.lines = lines
+
         # Find intersection points of the lines
         intersections = [
             find_intersection(lines[i], lines[j])
@@ -58,23 +62,23 @@ class SingleMap:
 
         # Define the two triangles by choosing a diagonal (e.g., between points 0 and 3)
         triangle1 = [parallelogram[0], parallelogram[1], parallelogram[2]]
-        triangle2 = [parallelogram[3], parallelogram[2], parallelogram[0]]
+        triangle2 = [parallelogram[1], parallelogram[2], parallelogram[3]]
 
         # Create masks for transport and blockade triangles
-        mask_blockade = self.map.copy()
-        mask_blockade[:] = self.map.index.map(
-            lambda x: [float(is_point_in_polygon(x, y, triangle2)) for y in self.map.columns]
-        )
+        mask_blockade = np.zeros_like(self.map, dtype=float)
+        mask_transport = np.zeros_like(self.map, dtype=float)
 
-        mask_transport = self.map.copy()
-        mask_transport[:] = self.map.index.map(
-            lambda x: [float(is_point_in_polygon(x, y, triangle1)) for y in self.map.columns]
-        )
+        for i, x in enumerate(self.FG14):
+            for j, y in enumerate(self.FG12):
+                if is_point_in_polygon(x, y, triangle1):
+                    mask_blockade[j, i] = 1.0
+                if is_point_in_polygon(x, y, triangle2):
+                    mask_transport[j, i] = 1.0
 
         # Set values to zero outside the defined regions
         self.blockade_triangle = self.map * mask_blockade
         self.transport_triangle = self.map * mask_transport
-        self.transport_mask = mask_transport.astype('bool')
+        self.transport_mask = mask_transport
         self.transport_vertices = triangle2
 
     def add_region(self, split_points):
@@ -82,44 +86,43 @@ class SingleMap:
         Add a custom region defined by vertices to the map.
 
         Parameters:
-            vertices (list of tuples): List of (x, y) coordinates defining the region's vertices.
+            split_points (list of tuples): List of (x, y) coordinates defining split points.
         """
         if self.mode == 1:
             # Define the smaller triangle
             smaller_triangle = [self.transport_vertices[0], split_points[0], split_points[1]]
-            region = self.map.copy()
-            region[:] = self.map.index.map(
-                lambda x: [float(is_point_in_polygon(x, y, smaller_triangle)) for y in self.map.columns]
-            )
-            self.regions.append(self.map*region)
+            region = np.zeros_like(self.map, dtype=float)
+            for i, x in enumerate(self.FG14):
+                for j, y in enumerate(self.FG12):
+                    if is_point_in_polygon(x, y, smaller_triangle):
+                        region[j, i] = 1.0
+            self.regions.append(self.map * region)
+
         elif self.mode == 2:
             # Define the two quadrilaterals
             quadrilateral1 = [split_points[0], self.transport_vertices[1], self.transport_vertices[2], split_points[1]]
             quadrilateral2 = [split_points[4], split_points[2], split_points[3], split_points[5]]
-            region1 = self.map.copy()
-            region1[:] = self.map.index.map(
-                lambda x: [float(is_point_in_polygon(x, y, quadrilateral1)) for y in self.map.columns]
-            )
-            self.regions.append(self.map*region1)
-            region2 = self.map.copy()
-            region2[:] = self.map.index.map(
-                lambda x: [float(is_point_in_polygon(x, y, quadrilateral2)) for y in self.map.columns]
-            )
-            self.regions.append(self.map*region2)
+
+            for quad in [quadrilateral1, quadrilateral2]:
+                region = np.zeros_like(self.map, dtype=float)
+                for i, x in enumerate(self.FG14):
+                    for j, y in enumerate(self.FG12):
+                        if is_point_in_polygon(x, y, quad):
+                            region[j, i] = 1.0
+                self.regions.append(self.map * region)
+
         elif self.mode == 3:
             # Define the smaller triangle and quadrilateral
             smaller_triangle = [self.transport_vertices[0], split_points[0], split_points[1]]
             quadrilateral = [split_points[2], self.transport_vertices[1], self.transport_vertices[2], split_points[3]]
-            region1 = self.map.copy()
-            region1[:] = self.map.index.map(
-                lambda x: [float(is_point_in_polygon(x, y, quadrilateral)) for y in self.map.columns]
-            )
-            self.regions.append(self.map*region1)
-            region2 = self.map.copy()
-            region2[:] = self.map.index.map(
-                lambda x: [float(is_point_in_polygon(x, y, smaller_triangle)) for y in self.map.columns]
-            )
-            self.regions.append(self.map*region2)
+
+            for poly in [quadrilateral, smaller_triangle]:
+                region = np.zeros_like(self.map, dtype=float)
+                for i, x in enumerate(self.FG14):
+                    for j, y in enumerate(self.FG12):
+                        if is_point_in_polygon(x, y, poly):
+                            region[j, i] = 1.0
+                self.regions.append(self.map * region)
 
     def get_ratio(self):
         """
@@ -129,48 +132,117 @@ class SingleMap:
             tuple: Depending on the mode, returns different ratio and uncertainty values.
         """
         if self.mode == 1:
-            ratio = self.blockade_triangle.mean().mean() / self.transport_triangle.mean().mean()
-            uncertainty = np.sqrt(ratio ** 2 * (
-                (self.transport_triangle.std().std() / self.transport_triangle.mean().mean()) ** 2 +
-                (self.blockade_triangle.std().std() / self.blockade_triangle.mean().mean()) ** 2
+            ratio = np.mean(self.transport_triangle) / np.mean(self.blockade_triangle)
+            uncertainty = np.sqrt(ratio**2 * (
+                (np.std(self.transport_triangle) / np.mean(self.transport_triangle))**2 +
+                (np.std(self.blockade_triangle) / np.mean(self.blockade_triangle))**2
             ))
             return ratio, uncertainty
-        elif self.mode == 2 or self.mode == 3:
+
+        elif self.mode in [2, 3]:
             ratios = []
             uncertainties = []
             for region in self.regions:
-                region_mean = self.blockade_triangle.mean().mean() / region.mean().mean()
+                region_mean = np.mean(self.blockade_triangle) / np.mean(region)
                 ratios.append(region_mean)
-                uncertainties.append(region.std().std() / region_mean)
+                uncertainties.append(np.std(region) / np.mean(region))
             return ratios, uncertainties
 
     def plot_map(self, reg=False):
         """
-        Plot the map with optional regions using seaborn.
+        Plot the map with optional regions using pcolormesh and include a gradient map.
 
         Parameters:
             reg (bool): Whether to include regions in the plot.
         """
-        plt.figure(figsize=(12, 8))
-        sns.heatmap(self.map, cmap="viridis", cbar_kws={"label": "Intensity"}, vmin=0, vmax=1,
-                    xticklabels=15, yticklabels=15, mask=self.transport_mask)
-        plt.xlabel("$FG_{14}$")
-        plt.ylabel("$FG_{12}$")
-        plt.title("2D Map Visualization")
+        fig, axs = plt.subplots(2, 1, figsize=(12, 12), gridspec_kw={'height_ratios': [3, 3]})
+
+        # First subplot: Original 2D map
+        ax1 = axs[0]
+        X, Y = np.meshgrid(self.FG14, self.FG12)
+        c1 = ax1.pcolormesh(X, Y, self.map, cmap="viridis_r", shading="auto", vmin=0, vmax=1)
+        cbar1 = fig.colorbar(c1, ax=ax1)
+        cbar1.set_label("$U_{demod.} (a.u.)$")
+        ax1.set_ylim(np.min(self.FG12), np.max(self.FG12))
+
+        # Add optional features (lines, vertices, regions)
+        if hasattr(self, 'lines') and self.lines:
+            for m, b in self.lines:
+                ax1.plot(self.FG14, m * self.FG14 + b, label="Line")
+
+        if self.transport_vertices:
+            vertices = np.array(self.transport_vertices)
+            ax1.scatter(vertices[:, 0], vertices[:, 1], color="red", label="Transport Vertices")
+
         if reg and self.regions:
             for region in self.regions:
-                plt.plot([v[0] for v in region], [v[1] for v in region], "r--")
+                vertices = np.array(region)  # Assuming regions store vertices as lists of (x, y)
+                ax1.plot(vertices[:, 0], vertices[:, 1], "r--", label="Region Boundary")
+
+        ax1.set_xlabel("$FG_{14}$")
+        ax1.set_ylabel("$FG_{12}$")
+        ax1.set_title("Original Map")
+
+        # Second subplot: Grayscale gradient map
+        ax2 = axs[1]
+        gradient_map = np.gradient(self.map, axis=1)  # Compute gradient along FG12
+        gradient_map_abs = np.abs(gradient_map)
+        gradient_map_gray = (255 * gradient_map_abs / np.max(gradient_map_abs)).astype(
+            np.uint8)  # Normalize to [0, 255]
+
+        # Plot grayscale image
+        ax2.imshow(gradient_map_gray, cmap="gray",
+                   extent=[np.min(self.FG14), np.max(self.FG14), np.min(self.FG12), np.max(self.FG12)], aspect="auto")
+        ax2.set_xlabel("$FG_{14}$")
+        ax2.set_ylabel("$FG_{12}$")
+        ax2.set_ylim(np.min(self.FG12), np.max(self.FG12))
+        ax2.set_title("Grayscale Gradient Map with Hough Transform")
+
+        # Perform Hough Transform
+        # Set a precision of 0.5 degree.
+        tested_angles = np.linspace(-np.pi / 2, np.pi / 2, 360, endpoint=False)
+        hspace, angles, distances = hough_line(gradient_map_gray, theta=tested_angles)
+
+        # Extract prominent lines
+        accum, theta, rho = hough_line_peaks(hspace, angles, distances)
+
+        # Plot detected lines
+        """
+        for angle, distance in zip(theta, rho):
+            # Compute the endpoints of the line
+            y0 = (distance - X[0, 0] * np.cos(angle)) / np.sin(angle)
+            y1 = (distance - X[0, -1] * np.cos(angle)) / np.sin(angle)
+            ax2.plot([self.FG14[0], self.FG14[-1]], [y0, y1], 'r--', label="Hough Line")
+        
+        for _, angle, dist in zip(*hough_line_peaks(hspace, angles, distances)):
+            (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+            ax2.axline((x0, y0), slope=np.tan(angle + np.pi / 2))
+        """
+        # Tight layout for better appearance
+        plt.tight_layout()
         plt.show()
 
-    def substract_background(self):
+    def subtract_background(self):
         """
         Subtract a polynomial background from the map and normalize the result.
         """
-        for col in self.map.columns:
-            self.map[col] -= 0.0095 * col
-        #self.map = self.map.apply(lambda x: gaussian_filter(x, sigma=(0.5, 0.5)), axis=0)
-        min_bin, max_bin = get_value_range(self.map.values)
+        # Define polynomial background subtraction
+        for i, col in enumerate(self.FG12):
+            self.map[:, i] -= 0.0095 * col
+
+        # Apply Gaussian filter for smoothing (if needed)
+        self.map = gaussian_filter(self.map, sigma=(0.5, 0.5))
+
+        # Remove outliers by clipping to a percentile range
+        lower_percentile = np.percentile(self.map, 2)  # 2nd percentile
+        upper_percentile = np.percentile(self.map, 98)  # 98th percentile
+        self.map = np.clip(self.map, lower_percentile, upper_percentile)
+
+        # Normalize the map
+        min_bin = np.min(self.map)
+        max_bin = np.max(self.map)
         self.map = (self.map - min_bin) / (max_bin - min_bin)
+
 
 def find_intersection(line1, line2):
     """
