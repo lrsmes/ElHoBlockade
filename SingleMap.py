@@ -2,8 +2,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import random
 from scipy.ndimage import gaussian_filter
-from skimage.transform import hough_line, hough_line_peaks
+from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
+from skimage.feature import canny
+from sklearn.cluster import DBSCAN
+from skimage.filters import threshold_otsu
 
 
 class SingleMap:
@@ -148,12 +152,15 @@ class SingleMap:
                 uncertainties.append(np.std(region) / np.mean(region))
             return ratios, uncertainties
 
-    def plot_map(self, reg=False):
+    def plot_map(self, reg=False, slope_interval=(-18, 1), eps_slope=0.2, eps_intercept=0.1):
         """
         Plot the map with optional regions using pcolormesh and include a gradient map.
 
         Parameters:
             reg (bool): Whether to include regions in the plot.
+            slope_interval (tuple): A tuple specifying the acceptable range of slopes for detected lines (min_slope, max_slope).
+            eps_slope (float): DBSCAN parameter for clustering similar slopes.
+            eps_intercept (float): DBSCAN parameter for clustering similar intercepts.
         """
         fig, axs = plt.subplots(2, 1, figsize=(12, 12), gridspec_kw={'height_ratios': [3, 3]})
 
@@ -183,44 +190,115 @@ class SingleMap:
         ax1.set_ylabel("$FG_{12}$")
         ax1.set_title("Original Map")
 
-        # Second subplot: Grayscale gradient map
+        # Second subplot: Grayscale gradient map with edges and filtered Hough lines
         ax2 = axs[1]
-        gradient_map = np.gradient(self.map, axis=1)  # Compute gradient along FG12
-        gradient_map_abs = np.abs(gradient_map)
-        gradient_map_gray = (255 * gradient_map_abs / np.max(gradient_map_abs)).astype(
-            np.uint8)  # Normalize to [0, 255]
 
-        # Plot grayscale image
-        ax2.imshow(gradient_map_gray, cmap="gray",
-                   extent=[np.min(self.FG14), np.max(self.FG14), np.min(self.FG12), np.max(self.FG12)], aspect="auto")
+        # Apply edge detection
+        edges = canny(self.map, sigma=0.6)  # Adjust sigma for edge sharpness
+
+        # Plot edges using pcolormesh
+        ax2.pcolormesh(X, Y, edges, cmap="gray", shading="auto")
+        ax2.set_title("Grayscale Gradient Map with Filtered Hough Transform")
         ax2.set_xlabel("$FG_{14}$")
         ax2.set_ylabel("$FG_{12}$")
+
+        # Apply probabilistic Hough Transform
+        lines = probabilistic_hough_line(edges, threshold=55, line_length=35, line_gap=30)
+
+        # Extract slope and intercept for each line
+        slopes_intercepts = []
+        line_coordinates = []
+        for line in lines:
+            (x0, y0), (x1, y1) = line
+
+            # Convert pixel coordinates to (X, Y)
+            x0_proj = self.FG14[x0]
+            y0_proj = self.FG12[y0]
+            x1_proj = self.FG14[x1]
+            y1_proj = self.FG12[y1]
+
+            # Compute slope and intercept
+            if x1_proj != x0_proj:  # Avoid division by zero
+                slope = (y1_proj - y0_proj) / (x1_proj - x0_proj)
+                intercept = y0_proj - slope * x0_proj
+
+                # Filter lines based on slope
+                if slope_interval[0] <= slope <= slope_interval[1]:
+                    slopes_intercepts.append([slope, intercept])
+                    line_coordinates.append(((x0_proj, y0_proj), (x1_proj, y1_proj)))
+
+        # Cluster lines using DBSCAN
+        if slopes_intercepts:
+            slopes_intercepts = np.array(slopes_intercepts)
+            dbscan = DBSCAN(eps=max(eps_slope, eps_intercept), min_samples=1).fit(slopes_intercepts)
+
+            # Randomly select one line from each cluster
+            unique_labels = set(dbscan.labels_)
+            selected_lines = []
+            for label in unique_labels:
+                if label == -1:  # Skip noise
+                    continue
+                cluster_indices = np.where(dbscan.labels_ == label)[0]
+                random_index = random.choice(cluster_indices)
+                selected_lines.append(slopes_intercepts[random_index])
+
+            # Plot selected lines
+            print(selected_lines)
+            for slope, intercept in #selected_lines:
+                x_vals = np.linspace(np.min(self.FG14), np.max(self.FG14), 500)
+                y_vals = slope * x_vals + intercept
+                ax2.plot(x_vals, y_vals, 'r-', label="Selected Line")
+
         ax2.set_ylim(np.min(self.FG12), np.max(self.FG12))
-        ax2.set_title("Grayscale Gradient Map with Hough Transform")
+        ax2.set_xlim(np.min(self.FG14), np.max(self.FG14))
 
-        # Perform Hough Transform
-        # Set a precision of 0.5 degree.
-        tested_angles = np.linspace(-np.pi / 2, np.pi / 2, 360, endpoint=False)
-        hspace, angles, distances = hough_line(gradient_map_gray, theta=tested_angles)
-
-        # Extract prominent lines
-        accum, theta, rho = hough_line_peaks(hspace, angles, distances)
-
-        # Plot detected lines
-        """
-        for angle, distance in zip(theta, rho):
-            # Compute the endpoints of the line
-            y0 = (distance - X[0, 0] * np.cos(angle)) / np.sin(angle)
-            y1 = (distance - X[0, -1] * np.cos(angle)) / np.sin(angle)
-            ax2.plot([self.FG14[0], self.FG14[-1]], [y0, y1], 'r--', label="Hough Line")
-        
-        for _, angle, dist in zip(*hough_line_peaks(hspace, angles, distances)):
-            (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
-            ax2.axline((x0, y0), slope=np.tan(angle + np.pi / 2))
-        """
         # Tight layout for better appearance
         plt.tight_layout()
         plt.show()
+
+    def detect_lines(self, slope_interval=(-18, 1), eps_slope=0.1, eps_intercept=0.1):
+        # Apply edge detection
+        edges = canny(self.map, sigma=0.6)  # Adjust sigma for edge sharpness
+
+        # Apply probabilistic Hough Transform
+        lines = probabilistic_hough_line(edges, threshold=35, line_length=25, line_gap=30)
+
+        # Extract slope and intercept for each line
+        slopes_intercepts = []
+        for line in lines:
+            (x0, y0), (x1, y1) = line
+
+            # Convert pixel coordinates to (X, Y)
+            x0_proj = self.FG14[x0]
+            y0_proj = self.FG12[y0]
+            x1_proj = self.FG14[x1]
+            y1_proj = self.FG12[y1]
+
+            # Compute slope and intercept
+            if x1_proj != x0_proj:  # Avoid division by zero
+                slope = (y1_proj - y0_proj) / (x1_proj - x0_proj)
+                intercept = y0_proj - slope * x0_proj
+
+                # Filter lines based on slope
+                if slope_interval[0] <= slope <= slope_interval[1]:
+                    slopes_intercepts.append([slope, intercept])
+
+        # Cluster lines using DBSCAN
+        if slopes_intercepts:
+            slopes_intercepts = np.array(slopes_intercepts)
+            dbscan = DBSCAN(eps=max(eps_slope, eps_intercept), min_samples=1).fit(slopes_intercepts)
+
+            # Randomly select one line from each cluster
+            unique_labels = set(dbscan.labels_)
+            selected_lines = []
+            for label in unique_labels:
+                if label == -1:  # Skip noise
+                    continue
+                cluster_indices = np.where(dbscan.labels_ == label)[0]
+                random_index = random.choice(cluster_indices)
+                selected_lines.append(slopes_intercepts[random_index])
+
+
 
     def subtract_background(self):
         """
