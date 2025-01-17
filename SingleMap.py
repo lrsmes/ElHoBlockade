@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import random
+import os
 from scipy.ndimage import gaussian_filter
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
 from skimage.feature import canny
@@ -11,7 +12,8 @@ from skimage.filters import threshold_otsu
 
 
 class SingleMap:
-    def __init__(self, FG12=None, FG14=None, Demod1R=None, tini=None, tread=None, pulse_dir=None, comp_fac=None, mode=None):
+    def __init__(self, FG12=None, FG14=None, Demod1R=None, tini=None, tread=None,
+                 pulse_dir=None, comp_fac=None, mode=None, file_dir=None):
         """
         Initialize the SingleMap class with optional parameters.
 
@@ -33,6 +35,7 @@ class SingleMap:
         self.pulse_dir = pulse_dir
         self.comp_fac = comp_fac
         self.mode = mode
+        self.dir = file_dir
         self.lines = None
         self.transport_triangle = None
         self.blockade_triangle = None
@@ -40,7 +43,7 @@ class SingleMap:
         self.transport_vertices = None
         self.regions = []
 
-    def add_triangle(self, lines):
+    def add_triangle(self, lines=None):
         """
         Mask the two triangles defined by the intersecting points of the electron and hole resonances.
 
@@ -48,14 +51,15 @@ class SingleMap:
             lines (list of tuples): A list of four lines, each defined by slope-intercept form (m, b)
                                     for the equation y = mx + b.
         """
-        self.lines = lines
+        if lines:
+            self.lines = lines
 
         # Find intersection points of the lines
         intersections = [
-            find_intersection(lines[i], lines[j])
-            for i in range(len(lines))
-            for j in range(i + 1, len(lines))
-            if find_intersection(lines[i], lines[j])
+            find_intersection(self.lines[i], self.lines[j])
+            for i in range(len(self.lines))
+            for j in range(i + 1, len(self.lines))
+            if find_intersection(self.lines[i], self.lines[j])
         ]
 
         # Filter unique intersection points
@@ -152,119 +156,67 @@ class SingleMap:
                 uncertainties.append(np.std(region) / np.mean(region))
             return ratios, uncertainties
 
-    def plot_map(self, reg=False, slope_interval=(-18, 1), eps_slope=0.2, eps_intercept=0.1):
+    def plot_map(self, reg=False):
         """
-        Plot the map with optional regions using pcolormesh and include a gradient map.
+        Plot the map with optional regions using pcolormesh and include optional features like lines, vertices, and regions.
 
         Parameters:
             reg (bool): Whether to include regions in the plot.
-            slope_interval (tuple): A tuple specifying the acceptable range of slopes for detected lines (min_slope, max_slope).
-            eps_slope (float): DBSCAN parameter for clustering similar slopes.
-            eps_intercept (float): DBSCAN parameter for clustering similar intercepts.
         """
-        fig, axs = plt.subplots(2, 1, figsize=(12, 12), gridspec_kw={'height_ratios': [3, 3]})
+        fig, ax = plt.subplots(figsize=(12, 8))
 
-        # First subplot: Original 2D map
-        ax1 = axs[0]
+        # Plot the 2D map using pcolormesh
         X, Y = np.meshgrid(self.FG14, self.FG12)
-        c1 = ax1.pcolormesh(X, Y, self.map, cmap="viridis_r", shading="auto", vmin=0, vmax=1)
-        cbar1 = fig.colorbar(c1, ax=ax1)
+        c1 = ax.pcolormesh(X, Y, self.map, cmap="viridis_r", shading="auto", vmin=0, vmax=1)
+
+        # Add a colorbar to the figure
+        cbar1 = fig.colorbar(c1, ax=ax)
         cbar1.set_label("$U_{demod.} (a.u.)$")
-        ax1.set_ylim(np.min(self.FG12), np.max(self.FG12))
+
+        # Set y-axis limits
+        ax.set_ylim(np.min(self.FG12), np.max(self.FG12))
 
         # Add optional features (lines, vertices, regions)
-        if hasattr(self, 'lines') and self.lines:
+        if self.lines:
             for m, b in self.lines:
-                ax1.plot(self.FG14, m * self.FG14 + b, label="Line")
+                ax.plot(self.FG14, m * self.FG14 + b, label="Line")  # Plot lines using slope (m) and intercept (b)
 
         if self.transport_vertices:
             vertices = np.array(self.transport_vertices)
-            ax1.scatter(vertices[:, 0], vertices[:, 1], color="red", label="Transport Vertices")
+            ax.scatter(vertices[:, 0], vertices[:, 1], color="red", label="Transport Vertices")  # Plot vertices
 
-        if reg and self.regions:
+        if reg and hasattr(self, 'regions') and self.regions:
             for region in self.regions:
                 vertices = np.array(region)  # Assuming regions store vertices as lists of (x, y)
-                ax1.plot(vertices[:, 0], vertices[:, 1], "r--", label="Region Boundary")
+                ax.plot(vertices[:, 0], vertices[:, 1], "r--", label="Region Boundary")  # Plot region boundaries
 
-        ax1.set_xlabel("$FG_{14}$")
-        ax1.set_ylabel("$FG_{12}$")
-        ax1.set_title("Original Map")
+        # Set axis labels and title
+        ax.set_xlabel("$FG_{14}$")
+        ax.set_ylabel("$FG_{12}$")
+        ax.set_title("Original Map")
 
-        # Second subplot: Grayscale gradient map with edges and filtered Hough lines
-        ax2 = axs[1]
+        # Display legend if any labels exist
+        if ax.get_legend_handles_labels()[0]:  # Check if there are any legend entries
+            ax.legend()
 
-        # Apply edge detection
-        edges = canny(self.map, sigma=0.6)  # Adjust sigma for edge sharpness
-
-        # Plot edges using pcolormesh
-        ax2.pcolormesh(X, Y, edges, cmap="gray", shading="auto")
-        ax2.set_title("Grayscale Gradient Map with Filtered Hough Transform")
-        ax2.set_xlabel("$FG_{14}$")
-        ax2.set_ylabel("$FG_{12}$")
-
-        # Apply probabilistic Hough Transform
-        lines = probabilistic_hough_line(edges, threshold=55, line_length=35, line_gap=30)
-
-        # Extract slope and intercept for each line
-        slopes_intercepts = []
-        line_coordinates = []
-        for line in lines:
-            (x0, y0), (x1, y1) = line
-
-            # Convert pixel coordinates to (X, Y)
-            x0_proj = self.FG14[x0]
-            y0_proj = self.FG12[y0]
-            x1_proj = self.FG14[x1]
-            y1_proj = self.FG12[y1]
-
-            # Compute slope and intercept
-            if x1_proj != x0_proj:  # Avoid division by zero
-                slope = (y1_proj - y0_proj) / (x1_proj - x0_proj)
-                intercept = y0_proj - slope * x0_proj
-
-                # Filter lines based on slope
-                if slope_interval[0] <= slope <= slope_interval[1]:
-                    slopes_intercepts.append([slope, intercept])
-                    line_coordinates.append(((x0_proj, y0_proj), (x1_proj, y1_proj)))
-
-        # Cluster lines using DBSCAN
-        if slopes_intercepts:
-            slopes_intercepts = np.array(slopes_intercepts)
-            dbscan = DBSCAN(eps=max(eps_slope, eps_intercept), min_samples=1).fit(slopes_intercepts)
-
-            # Randomly select one line from each cluster
-            unique_labels = set(dbscan.labels_)
-            selected_lines = []
-            for label in unique_labels:
-                if label == -1:  # Skip noise
-                    continue
-                cluster_indices = np.where(dbscan.labels_ == label)[0]
-                random_index = random.choice(cluster_indices)
-                selected_lines.append(slopes_intercepts[random_index])
-
-            # Plot selected lines
-            print(selected_lines)
-            for slope, intercept in #selected_lines:
-                x_vals = np.linspace(np.min(self.FG14), np.max(self.FG14), 500)
-                y_vals = slope * x_vals + intercept
-                ax2.plot(x_vals, y_vals, 'r-', label="Selected Line")
-
-        ax2.set_ylim(np.min(self.FG12), np.max(self.FG12))
-        ax2.set_xlim(np.min(self.FG14), np.max(self.FG14))
-
-        # Tight layout for better appearance
+        # Adjust layout for better appearance
         plt.tight_layout()
-        plt.show()
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{np.round(self.tread)}_map.png'))
+        plt.close()
 
-    def detect_lines(self, slope_interval=(-18, 1), eps_slope=0.1, eps_intercept=0.1):
+    def detect_lines(self, slope_interval1=(-18, -10), slope_interval2=(-0.92, -0.7)):
+        """
+        Detect lines and select four lines to form a parallelogram based on minimum distance.
+        """
         # Apply edge detection
-        edges = canny(self.map, sigma=0.6)  # Adjust sigma for edge sharpness
+        edges = canny(self.map, sigma=0.4)  # Adjust sigma for edge sharpness
 
         # Apply probabilistic Hough Transform
-        lines = probabilistic_hough_line(edges, threshold=35, line_length=25, line_gap=30)
+        lines = probabilistic_hough_line(edges, threshold=8, line_length=5, line_gap=60)
 
-        # Extract slope and intercept for each line
-        slopes_intercepts = []
+        # Extract lines based on slope intervals
+        lines_interval1 = []  # Red lines
+        lines_interval2 = []  # Blue lines
         for line in lines:
             (x0, y0), (x1, y1) = line
 
@@ -279,26 +231,86 @@ class SingleMap:
                 slope = (y1_proj - y0_proj) / (x1_proj - x0_proj)
                 intercept = y0_proj - slope * x0_proj
 
-                # Filter lines based on slope
-                if slope_interval[0] <= slope <= slope_interval[1]:
-                    slopes_intercepts.append([slope, intercept])
+                # Classify lines into slope intervals
+                if slope_interval1[0] <= slope <= slope_interval1[1]:
+                    lines_interval1.append((slope, intercept))
+                elif slope_interval2[0] <= slope <= slope_interval2[1]:
+                    lines_interval2.append((slope, intercept))
 
-        # Cluster lines using DBSCAN
-        if slopes_intercepts:
-            slopes_intercepts = np.array(slopes_intercepts)
-            dbscan = DBSCAN(eps=max(eps_slope, eps_intercept), min_samples=1).fit(slopes_intercepts)
+        # Select two blue lines (interval 2) based on y-difference at FG14.min
+        FG14_min = self.FG14[0]
+        blue_lines = []
+        if lines_interval2:
+            distances = []
+            for slope, intercept in lines_interval2:
+                y_val = slope * FG14_min + intercept
+                distances.append((y_val, slope, intercept))
+            distances.sort()  # Sort by y-values
+            blue_lines.append((distances[0][1], distances[0][2]))  # Smallest y-value
+            blue_lines.append((distances[-1][1], distances[-1][2]))  # Largest y-value
 
-            # Randomly select one line from each cluster
-            unique_labels = set(dbscan.labels_)
-            selected_lines = []
-            for label in unique_labels:
-                if label == -1:  # Skip noise
-                    continue
-                cluster_indices = np.where(dbscan.labels_ == label)[0]
-                random_index = random.choice(cluster_indices)
-                selected_lines.append(slopes_intercepts[random_index])
+        # Select two red lines (interval 1) based on x-difference at FG12.max
+        FG12_max = self.FG12[-1]
+        red_lines = []
+        if lines_interval1:
+            distances = []
+            for slope, intercept in lines_interval1:
+                x_val = (FG12_max - intercept) / slope
+                distances.append((x_val, slope, intercept))
+            distances.sort()  # Sort by x-values
+            red_lines.append((distances[0][1], distances[0][2]))  # Smallest x-value
+            red_lines.append((distances[-1][1], distances[-1][2]))  # Largest x-value
 
+        self.lines = [*red_lines, *blue_lines]
 
+        # Plot the edge map with lines
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Plot the edge map using pcolormesh
+        X, Y = np.meshgrid(self.FG14, self.FG12)
+        ax.pcolormesh(X, Y, edges, cmap="gray", shading="auto")
+        ax.set_title("Edge Map with Hough Lines")
+        ax.set_xlabel("$FG_{14}$")
+        ax.set_ylabel("$FG_{12}$")
+        ax.set_ylim(np.min(self.FG12), np.max(self.FG12))
+
+        # Plot blue lines (interval 2)
+        for slope, intercept in blue_lines:
+            y_vals = slope * self.FG14 + intercept
+            ax.plot(self.FG14, y_vals, 'b-', label=f"Slope {slope:.2f}, Interval 2")
+
+        # Plot red lines (interval 1)
+        for slope, intercept in red_lines:
+            y_vals = slope * self.FG14 + intercept
+            ax.plot(self.FG14, y_vals, 'r-', label=f"Slope {slope:.2f}, Interval 1")
+
+        # Connect intersections to visualize the parallelogram
+        if len(blue_lines) == 2 and len(red_lines) == 2:
+            intersections = []
+            for line1 in red_lines:
+                for line2 in blue_lines:
+                    slope1, intercept1 = line1
+                    slope2, intercept2 = line2
+
+                    # Solve for intersection point
+                    if slope1 != slope2:  # Ensure lines are not parallel
+                        x_intersect = (intercept2 - intercept1) / (slope1 - slope2)
+                        y_intersect = slope1 * x_intersect + intercept1
+                        intersections.append([x_intersect, y_intersect])
+
+            # Plot intersections as a parallelogram
+            if len(intersections) == 4:
+                intersections = np.array(intersections)
+                ax.plot(
+                    np.append(intersections[:, 0], intersections[0, 0]),
+                    np.append(intersections[:, 1], intersections[0, 1]),
+                    'g--', label="Parallelogram"
+                )
+
+        plt.legend(loc="upper right")
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{np.round(self.tread)}_lines.png'))
+        plt.close()
 
     def subtract_background(self):
         """
