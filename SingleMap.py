@@ -54,6 +54,8 @@ class SingleMap:
         if lines:
             self.lines = lines
 
+        assert len(self.lines) == 4
+
         # Find intersection points of the lines
         intersections = [
             find_intersection(self.lines[i], self.lines[j])
@@ -204,15 +206,15 @@ class SingleMap:
         plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{np.round(self.tread)}_map.png'))
         plt.close()
 
-    def detect_lines(self, slope_interval1=(-18, -10), slope_interval2=(-0.92, -0.7)):
+    def detect_lines(self, slope_interval1=(-18, -10), slope_interval2=(-0.92, -0.76), min_distance=0.0025):
         """
         Detect lines and select four lines to form a parallelogram based on minimum distance.
         """
         # Apply edge detection
-        edges = canny(self.map, sigma=0.4)  # Adjust sigma for edge sharpness
+        edges = canny(self.map, sigma=0.5)  # Adjust sigma for edge sharpness
 
         # Apply probabilistic Hough Transform
-        lines = probabilistic_hough_line(edges, threshold=8, line_length=5, line_gap=60)
+        lines = probabilistic_hough_line(edges, threshold=5, line_length=5, line_gap=60)
 
         # Extract lines based on slope intervals
         lines_interval1 = []  # Red lines
@@ -237,6 +239,22 @@ class SingleMap:
                 elif slope_interval2[0] <= slope <= slope_interval2[1]:
                     lines_interval2.append((slope, intercept))
 
+        # Helper function to filter lines based on minimum distance
+        def filter_lines_by_distance(lines, min_dist):
+            filtered_lines = []
+            prev_vals = []
+            for val, slope, intercept in lines:
+                if not filtered_lines:
+                    filtered_lines.append((slope, intercept))
+                    prev_vals.append(val)
+                else:
+                    # Check distance to all previously added lines
+                    distances = [abs(val - prev_val) for prev_val in
+                                 prev_vals]
+                    if all(d > min_dist for d in distances):
+                        filtered_lines.append((slope, intercept))
+            return filtered_lines
+
         # Select two blue lines (interval 2) based on y-difference at FG14.min
         FG14_min = self.FG14[0]
         blue_lines = []
@@ -246,8 +264,10 @@ class SingleMap:
                 y_val = slope * FG14_min + intercept
                 distances.append((y_val, slope, intercept))
             distances.sort()  # Sort by y-values
-            blue_lines.append((distances[0][1], distances[0][2]))  # Smallest y-value
-            blue_lines.append((distances[-1][1], distances[-1][2]))  # Largest y-value
+            filtered_lines = filter_lines_by_distance([(val, slope, intercept) for val, slope, intercept in distances],
+                                                      min_distance)
+            if len(filtered_lines) >= 2:
+                blue_lines = [filtered_lines[0], filtered_lines[-1]]
 
         # Select two red lines (interval 1) based on x-difference at FG12.max
         FG12_max = self.FG12[-1]
@@ -258,8 +278,10 @@ class SingleMap:
                 x_val = (FG12_max - intercept) / slope
                 distances.append((x_val, slope, intercept))
             distances.sort()  # Sort by x-values
-            red_lines.append((distances[0][1], distances[0][2]))  # Smallest x-value
-            red_lines.append((distances[-1][1], distances[-1][2]))  # Largest x-value
+            filtered_lines = filter_lines_by_distance([(val, slope, intercept) for val, slope, intercept in distances],
+                                                      min_distance)
+            if len(filtered_lines) >= 2:
+                red_lines = [filtered_lines[0], filtered_lines[-1]]
 
         self.lines = [*red_lines, *blue_lines]
 
@@ -277,12 +299,12 @@ class SingleMap:
         # Plot blue lines (interval 2)
         for slope, intercept in blue_lines:
             y_vals = slope * self.FG14 + intercept
-            ax.plot(self.FG14, y_vals, 'b-', label=f"Slope {slope:.2f}, Interval 2")
+            ax.plot(self.FG14, y_vals, 'b-', label=f"Slope {slope:.2f}, Intercept {intercept:.2f}")
 
         # Plot red lines (interval 1)
         for slope, intercept in red_lines:
             y_vals = slope * self.FG14 + intercept
-            ax.plot(self.FG14, y_vals, 'r-', label=f"Slope {slope:.2f}, Interval 1")
+            ax.plot(self.FG14, y_vals, 'r-', label=f"Slope {slope:.2f}, Intercept {intercept:.2f}")
 
         # Connect intersections to visualize the parallelogram
         if len(blue_lines) == 2 and len(red_lines) == 2:
@@ -312,16 +334,60 @@ class SingleMap:
         plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{np.round(self.tread)}_lines.png'))
         plt.close()
 
+    def add_line(self, slope, intercept):
+        """
+        Add a new line to the lines list.
+
+        Parameters:
+            slope (float): Slope of the line (m in y = mx + b).
+            intercept (float): Intercept of the line (b in y = mx + b).
+        """
+        if self.lines is None:
+            self.lines = []
+        self.lines.append((slope, intercept))
+        print(f"Added line: y = {slope}x + {intercept}")
+
+    def move_line(self, index, new_slope, new_intercept):
+        """
+        Modify the slope and intercept of an existing line.
+
+        Parameters:
+            index (int): Index of the line in the lines list to modify.
+            new_slope (float): New slope for the line.
+            new_intercept (float): New intercept for the line.
+        """
+        if self.lines is None or index >= len(self.lines):
+            print("Invalid line index. No changes made.")
+            return
+
+        old_line = self.lines[index]
+        self.lines[index] = (new_slope, new_intercept)
+        print(f"Moved line {index} from y = {old_line[0]}x + {old_line[1]} to y = {new_slope}x + {new_intercept}")
+
+    def delete_line(self, index):
+        """
+        Remove a line from the lines list.
+
+        Parameters:
+            index (int): Index of the line in the lines list to remove.
+        """
+        if self.lines is None or index >= len(self.lines):
+            print("Invalid line index. No line deleted.")
+            return
+
+        removed_line = self.lines.pop(index)
+        print(f"Deleted line: y = {removed_line[0]}x + {removed_line[1]}")
+
     def subtract_background(self):
         """
         Subtract a polynomial background from the map and normalize the result.
         """
         # Define polynomial background subtraction
         for i, col in enumerate(self.FG12):
-            self.map[:, i] -= 0.0095 * col
+            self.map[:, i] -= self.comp_fac * col
 
         # Apply Gaussian filter for smoothing (if needed)
-        self.map = gaussian_filter(self.map, sigma=(0.5, 0.5))
+        #self.map = gaussian_filter(self.map, sigma=(0.5, 0.5))
 
         # Remove outliers by clipping to a percentile range
         lower_percentile = np.percentile(self.map, 2)  # 2nd percentile

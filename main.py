@@ -843,7 +843,10 @@ def both_dir_500mT():
 
     for file in file_names:
         # Load the data in the given file
-        all_maps_pos, all_maps_neg = load_data(file, group, dataset, channels, all_maps_blockade, all_maps_transport)
+        if 'non_blockade' in file:
+            all_maps_transport = load_data_wo_dir(file, group, dataset, channels, all_maps_transport)
+        else:
+            all_maps_pos, all_maps_neg = load_data(file, group, dataset, channels, all_maps_blockade, all_maps_transport)
 
     print(all_maps_blockade)
     ###########
@@ -873,24 +876,51 @@ def both_dir_400mT():
     ratios_err_blockade = []
     all_maps_blockade = []
     all_maps_transport = []
+    single_maps_blockade = []
+    single_maps_transport = []
 
     for file in file_names:
         # Load the data in the given file
-        all_maps_blockade, all_maps_transport = load_data(file, group, dataset, channels, all_maps_blockade, all_maps_transport)
+        if 'both_dir_2' in file:
+            all_maps_blockade, all_maps_transport = load_data(file, group, dataset, channels, all_maps_blockade,
+                                                              all_maps_transport)
+        else:
+            all_maps_transport = load_data_wo_dir(file, group, dataset, channels, all_maps_transport)
+
+    #all_maps_transport = all_maps_transport[5:11] + all_maps_transport[13:]
+    #for map in all_maps_transport:
+    #    print(map[3])
 
     ###########
     # Blockade
     ###########
     print('###################### Blockade #########################')
     ratios = []
-    for map in all_maps_blockade[3:]:
-        map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], 1, 0.0052, 1, file_dir)
+    for map in all_maps_blockade:
+        print(map[3])
+        map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], 1, 0.0095, 1, file_dir)
         map_obj.subtract_background()
         map_obj.detect_lines()
-        map_obj.plot_map()
-        map_obj.add_triangle()
-        ratio, sigma_ratio = map_obj.get_ratio()
-        ratios.append(ratio)
+        single_maps_blockade.append(map_obj)
+        #map_obj.plot_map()
+        #map_obj.add_triangle()
+        #ratio, sigma_ratio = map_obj.get_ratio()
+        #ratios.append(ratio)
+
+    #############
+    # Transport
+    #############
+    print('###################### Transport #########################')
+    for map in all_maps_transport:
+        print(map[3])
+        map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], -1, 0.0095, 1, file_dir)
+        map_obj.subtract_background()
+        map_obj.detect_lines()
+        single_maps_transport.append(map_obj)
+        #map_obj.plot_map()
+        #map_obj.add_triangle()
+        #ratio_transport, ratio_err_transport = map_obj.get_ratio()
+        #ratios_transport.append(ratio_transport)
 
     plt.figure(figsize=(20, 12))
     ls = 'dashed'
@@ -901,11 +931,26 @@ def both_dir_400mT():
     print(t_read_s)
     plt.plot(t_read_s, ratios,
              linestyle='None', marker='.')
-    plt.ylim(0, 1.2)
+    plt.ylim(0, 1)
     plt.ylabel('Intensity ratio')
     plt.xlabel(r'$T_{read}$ ($\mu$s)')
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(file_dir, f'exp_fit_blockade.png'))
+
+    plt.figure(figsize=(20, 12))
+    ls = 'dashed'
+    t_read_s = []
+    for elem in all_maps_transport:
+        t_read_s.append(elem[3])
+    t_read_s = np.array(t_read_s) * 125 * 1e-6
+    print(t_read_s)
+    plt.plot(t_read_s, ratios_transport,
+             linestyle='None', marker='.')
+    plt.ylim(0, 1)
+    plt.ylabel('Intensity ratio')
+    plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    plt.tight_layout()
+    plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
 
 
 
