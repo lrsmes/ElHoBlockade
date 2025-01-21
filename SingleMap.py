@@ -5,6 +5,7 @@ import seaborn as sns
 import random
 import os
 from scipy.ndimage import gaussian_filter
+from scipy.signal import detrend
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
 from skimage.feature import canny
 from sklearn.cluster import DBSCAN
@@ -203,18 +204,19 @@ class SingleMap:
 
         # Adjust layout for better appearance
         plt.tight_layout()
-        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{np.round(self.tread)}_map.png'))
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_map.png'))
         plt.close()
 
-    def detect_lines(self, slope_interval1=(-18, -10), slope_interval2=(-0.92, -0.76), min_distance=0.0025):
+    def detect_lines(self, slope_interval1=(-19, -8), slope_interval2=(-1, -0.7),
+                     min_distance=0.0025, max_distance=0.0055):
         """
         Detect lines and select four lines to form a parallelogram based on minimum distance.
         """
         # Apply edge detection
-        edges = canny(self.map, sigma=0.5)  # Adjust sigma for edge sharpness
+        edges = canny(self.map, sigma=0.7)  # Adjust sigma for edge sharpness
 
         # Apply probabilistic Hough Transform
-        lines = probabilistic_hough_line(edges, threshold=5, line_length=5, line_gap=60)
+        lines = probabilistic_hough_line(edges, threshold=10, line_length=5, line_gap=60)
 
         # Extract lines based on slope intervals
         lines_interval1 = []  # Red lines
@@ -240,7 +242,7 @@ class SingleMap:
                     lines_interval2.append((slope, intercept))
 
         # Helper function to filter lines based on minimum distance
-        def filter_lines_by_distance(lines, min_dist):
+        def filter_lines_by_distance(lines, min_dist, max_dist):
             filtered_lines = []
             prev_vals = []
             for val, slope, intercept in lines:
@@ -251,7 +253,7 @@ class SingleMap:
                     # Check distance to all previously added lines
                     distances = [abs(val - prev_val) for prev_val in
                                  prev_vals]
-                    if all(d > min_dist for d in distances):
+                    if all(min_dist < d and d < max_dist for d in distances):
                         filtered_lines.append((slope, intercept))
             return filtered_lines
 
@@ -265,7 +267,7 @@ class SingleMap:
                 distances.append((y_val, slope, intercept))
             distances.sort()  # Sort by y-values
             filtered_lines = filter_lines_by_distance([(val, slope, intercept) for val, slope, intercept in distances],
-                                                      min_distance)
+                                                      min_distance, 0.01)
             if len(filtered_lines) >= 2:
                 blue_lines = [filtered_lines[0], filtered_lines[-1]]
 
@@ -279,7 +281,7 @@ class SingleMap:
                 distances.append((x_val, slope, intercept))
             distances.sort()  # Sort by x-values
             filtered_lines = filter_lines_by_distance([(val, slope, intercept) for val, slope, intercept in distances],
-                                                      min_distance)
+                                                      min_distance, max_distance)
             if len(filtered_lines) >= 2:
                 red_lines = [filtered_lines[0], filtered_lines[-1]]
 
@@ -331,7 +333,7 @@ class SingleMap:
 
         plt.legend(loc="upper right")
         plt.tight_layout()
-        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{np.round(self.tread)}_lines.png'))
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_lines.png'))
         plt.close()
 
     def add_line(self, slope, intercept):
@@ -382,17 +384,51 @@ class SingleMap:
         """
         Subtract a polynomial background from the map and normalize the result.
         """
-        # Define polynomial background subtraction
-        for i, col in enumerate(self.FG12):
-            self.map[:, i] -= self.comp_fac * col
 
-        # Apply Gaussian filter for smoothing (if needed)
-        #self.map = gaussian_filter(self.map, sigma=(0.5, 0.5))
+        # Define polynomial background subtraction
+        #for i, col in enumerate(self.FG14):
+        #    self.map[:, i] -= self.comp_fac * col
+        #   self.map[:, i] = detrend(self.map[:, i])
+
+        # Compute the derivative along FG14 (axis=1, as FG14 varies along columns)
+        map_derivative = np.gradient(self.map, axis=1)*10**4  # Derivative along FG14
+        flattened_derivative = map_derivative.flatten()
+
+        # Remove sharp jumps by thresholding extreme values (outliers)
+        valid_derivatives = flattened_derivative[
+            (flattened_derivative < np.percentile(flattened_derivative, 80)) &
+            (flattened_derivative > np.percentile(flattened_derivative, 20))
+            ]
+
+        # Calculate the slope as the mean of the valid derivatives
+        slope = np.median(valid_derivatives)
+        print(slope)
+
+        # Create a linear background to subtract
+        FG14_slope = slope * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
+        background = np.tile(FG14_slope, (self.map.shape[0], 1))  # Repeat for all rows (FG12)
+
+        #plt.figure()
+        #plt.plot(self.FG14, self.map[10, :])
+        #plt.plot(self.FG14, average_slope * self.FG14 - 0.002)
+        #plt.title('Original')
+        #plt.show()
+
+        # Subtract the background from the map
+        self.map -= background
 
         # Remove outliers by clipping to a percentile range
         lower_percentile = np.percentile(self.map, 2)  # 2nd percentile
         upper_percentile = np.percentile(self.map, 98)  # 98th percentile
         self.map = np.clip(self.map, lower_percentile, upper_percentile)
+
+        #plt.figure()
+        #plt.plot(self.FG14, self.map[10, :])
+        #plt.title('Substracted')
+        #plt.show()
+
+        # Apply Gaussian filter for smoothing (if needed)
+        #self.map = gaussian_filter(self.map, sigma=(0.5, 0.5))
 
         # Normalize the map
         min_bin = np.min(self.map)
