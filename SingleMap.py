@@ -8,8 +8,11 @@ from scipy.ndimage import gaussian_filter
 from scipy.signal import detrend
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
 from skimage.feature import canny
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN, HDBSCAN
 from skimage.filters import threshold_otsu
+from skimage.graph import rag_mean_color
+from skimage.segmentation import slic, mark_boundaries
+from skimage.color import label2rgb, rgb2gray
 
 
 class SingleMap:
@@ -37,7 +40,8 @@ class SingleMap:
         self.comp_fac = comp_fac
         self.mode = mode
         self.dir = file_dir
-        self.lines = None
+        self.horizontal_lines = None
+        self.vertical_lines = None
         self.transport_triangle = None
         self.blockade_triangle = None
         self.transport_mask = None
@@ -55,42 +59,56 @@ class SingleMap:
         if lines:
             self.lines = lines
 
-        assert len(self.lines) == 4
+        if len(self.vertical_lines) == 2 and len(self.horizontal_lines) == 2:
+            # Find intersection points of the lines
+            intersections = [
+                find_intersection(self.vertical_lines[i], self.horizontal_lines[j])
+                for i in range(len(self.vertical_lines))
+                for j in range(len(self.horizontal_lines))
+                if find_intersection(self.vertical_lines[i], self.horizontal_lines[j])
+            ]
 
-        # Find intersection points of the lines
-        intersections = [
-            find_intersection(self.lines[i], self.lines[j])
-            for i in range(len(self.lines))
-            for j in range(i + 1, len(self.lines))
-            if find_intersection(self.lines[i], self.lines[j])
-        ]
+            # Filter unique intersection points
+            intersections = list(set(intersections))
 
-        # Filter unique intersection points
-        intersections = list(set(intersections))
+            # Sort intersections to define the parallelogram
+            parallelogram = sorted(intersections, key=lambda p: (p[0], p[1]))
 
-        # Sort intersections to define the parallelogram
-        parallelogram = sorted(intersections, key=lambda p: (p[0], p[1]))
+            # Define the two triangles by choosing a diagonal (e.g., between points 0 and 3)
+            triangle1 = [parallelogram[0], parallelogram[1], parallelogram[2]]
+            triangle2 = [parallelogram[1], parallelogram[2], parallelogram[3]]
 
-        # Define the two triangles by choosing a diagonal (e.g., between points 0 and 3)
-        triangle1 = [parallelogram[0], parallelogram[1], parallelogram[2]]
-        triangle2 = [parallelogram[1], parallelogram[2], parallelogram[3]]
+            # Create masks for transport and blockade triangles
+            mask_blockade = np.zeros_like(self.map, dtype=float)
+            mask_transport = np.zeros_like(self.map, dtype=float)
 
-        # Create masks for transport and blockade triangles
-        mask_blockade = np.zeros_like(self.map, dtype=float)
-        mask_transport = np.zeros_like(self.map, dtype=float)
+            for i, x in enumerate(self.FG14):
+                for j, y in enumerate(self.FG12):
+                    if is_point_in_polygon(x, y, triangle1):
+                        mask_blockade[j, i] = 1.0
+                    if is_point_in_polygon(x, y, triangle2):
+                        mask_transport[j, i] = 1.0
 
-        for i, x in enumerate(self.FG14):
-            for j, y in enumerate(self.FG12):
-                if is_point_in_polygon(x, y, triangle1):
-                    mask_blockade[j, i] = 1.0
-                if is_point_in_polygon(x, y, triangle2):
-                    mask_transport[j, i] = 1.0
+            # Set values to zero outside the defined regions
+            self.blockade_triangle = self.map * mask_blockade
+            self.transport_triangle = self.map * mask_transport
+            self.transport_mask = mask_transport
+            self.transport_vertices = triangle2
+        else:
+            # Find intersection points of the lines
+            intersections = [
+                find_intersection(self.vertical_lines[i], self.horizontal_lines[j])
+                for i in range(len(self.vertical_lines))
+                for j in range(len(self.horizontal_lines))
+                if find_intersection(self.vertical_lines[i], self.horizontal_lines[j])
+            ]
 
-        # Set values to zero outside the defined regions
-        self.blockade_triangle = self.map * mask_blockade
-        self.transport_triangle = self.map * mask_transport
-        self.transport_mask = mask_transport
-        self.transport_vertices = triangle2
+            # Filter unique intersection points
+            intersections = list(set(intersections))
+            self.blockade_triangle = 0
+            self.transport_triangle = 0
+            self.transport_vertices = intersections
+
 
     def add_region(self, split_points):
         """
@@ -180,8 +198,10 @@ class SingleMap:
         ax.set_ylim(np.min(self.FG12), np.max(self.FG12))
 
         # Add optional features (lines, vertices, regions)
-        if self.lines:
-            for m, b in self.lines:
+        if self.vertical_lines or self.horizontal_lines:
+            for m, b in self.vertical_lines:
+                ax.plot(self.FG14, m * self.FG14 + b, label="Line")  # Plot lines using slope (m) and intercept (b)
+            for m, b in self.horizontal_lines:
                 ax.plot(self.FG14, m * self.FG14 + b, label="Line")  # Plot lines using slope (m) and intercept (b)
 
         if self.transport_vertices:
@@ -207,20 +227,22 @@ class SingleMap:
         plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_map.png'))
         plt.close()
 
-    def detect_lines(self, slope_interval1=(-19, -8), slope_interval2=(-1, -0.7),
-                     min_distance=0.0025, max_distance=0.0055):
+    def detect_lines(self, slope_interval1=(-18, -8), slope_interval2=(-0.9, -0.6), slope_diag=(0.9, 1.2),
+                     min_distance=0.0025, max_distance=0.006):
         """
         Detect lines and select four lines to form a parallelogram based on minimum distance.
         """
+
         # Apply edge detection
-        edges = canny(self.map, sigma=0.7)  # Adjust sigma for edge sharpness
+        edges = canny(self.map, sigma=0.8)  # Adjust sigma for edge sharpness
 
         # Apply probabilistic Hough Transform
-        lines = probabilistic_hough_line(edges, threshold=10, line_length=5, line_gap=60)
+        lines = probabilistic_hough_line(edges, threshold=5, line_length=5, line_gap=45)
 
         # Extract lines based on slope intervals
         lines_interval1 = []  # Red lines
         lines_interval2 = []  # Blue lines
+        diagonal = []
         for line in lines:
             (x0, y0), (x1, y1) = line
 
@@ -240,6 +262,8 @@ class SingleMap:
                     lines_interval1.append((slope, intercept))
                 elif slope_interval2[0] <= slope <= slope_interval2[1]:
                     lines_interval2.append((slope, intercept))
+                elif slope_diag[0] <= slope <= slope_diag[1]:
+                    diagonal.append((slope, intercept))
 
         # Helper function to filter lines based on minimum distance
         def filter_lines_by_distance(lines, min_dist, max_dist):
@@ -253,39 +277,61 @@ class SingleMap:
                     # Check distance to all previously added lines
                     distances = [abs(val - prev_val) for prev_val in
                                  prev_vals]
-                    if all(min_dist < d and d < max_dist for d in distances):
+                    if all(d > min_dist and d < max_dist for d in distances):
                         filtered_lines.append((slope, intercept))
             return filtered_lines
+        """
+        plt.figure()
+        for slope, intercept in diagonal:
+            plt.scatter(slope, intercept)
+        plt.title('diagonal')
+        plt.show()
+        """
 
         # Select two blue lines (interval 2) based on y-difference at FG14.min
         FG14_min = self.FG14[0]
         blue_lines = []
         if lines_interval2:
             distances = []
+            # plt.figure()
             for slope, intercept in lines_interval2:
                 y_val = slope * FG14_min + intercept
                 distances.append((y_val, slope, intercept))
+                # plt.scatter(y_val, slope)
+            # plt.title(f'blue_{self.tread}')
+            # plt.show()
             distances.sort()  # Sort by y-values
-            filtered_lines = filter_lines_by_distance([(val, slope, intercept) for val, slope, intercept in distances],
-                                                      min_distance, 0.01)
+            filtered_lines = filter_lines_by_distance(
+                [(val, slope, intercept) for val, slope, intercept in distances],
+                min_distance, 0.01)
             if len(filtered_lines) >= 2:
                 blue_lines = [filtered_lines[0], filtered_lines[-1]]
+            else:
+                blue_lines = filtered_lines
 
         # Select two red lines (interval 1) based on x-difference at FG12.max
         FG12_max = self.FG12[-1]
         red_lines = []
         if lines_interval1:
             distances = []
+            # plt.figure()
             for slope, intercept in lines_interval1:
                 x_val = (FG12_max - intercept) / slope
                 distances.append((x_val, slope, intercept))
+                # plt.scatter(x_val, slope)
+            # plt.title(f'red_{self.tread}')
+            # plt.show()
             distances.sort()  # Sort by x-values
-            filtered_lines = filter_lines_by_distance([(val, slope, intercept) for val, slope, intercept in distances],
-                                                      min_distance, max_distance)
+            filtered_lines = filter_lines_by_distance(
+                [(val, slope, intercept) for val, slope, intercept in distances],
+                min_distance, max_distance)
             if len(filtered_lines) >= 2:
                 red_lines = [filtered_lines[0], filtered_lines[-1]]
+            else:
+                red_lines = filtered_lines
 
-        self.lines = [*red_lines, *blue_lines]
+        self.vertical_lines = red_lines
+        self.horizontal_lines = blue_lines
 
         # Plot the edge map with lines
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -307,6 +353,10 @@ class SingleMap:
         for slope, intercept in red_lines:
             y_vals = slope * self.FG14 + intercept
             ax.plot(self.FG14, y_vals, 'r-', label=f"Slope {slope:.2f}, Intercept {intercept:.2f}")
+
+        for slope, intercept in diagonal:
+            y_vals = slope * self.FG14 + intercept
+            ax.plot(self.FG14, y_vals, 'g-', label=f"Slope {slope:.2f}, Intercept {intercept:.2f}")
 
         # Connect intersections to visualize the parallelogram
         if len(blue_lines) == 2 and len(red_lines) == 2:

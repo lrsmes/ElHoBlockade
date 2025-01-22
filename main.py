@@ -903,9 +903,10 @@ def both_dir_400mT():
         map_obj.detect_lines()
         single_maps_blockade.append(map_obj)
         map_obj.plot_map()
-        #map_obj.add_triangle()
-        #ratio, sigma_ratio = map_obj.get_ratio()
-        #ratios.append(ratio)
+        map_obj.add_triangle()
+        ratio, sigma_ratio = map_obj.get_ratio()
+        ratios_blockade.append(ratio)
+        ratios_err_blockade.append(sigma_ratio)
 
     #############
     # Transport
@@ -918,20 +919,42 @@ def both_dir_400mT():
         map_obj.detect_lines()
         single_maps_transport.append(map_obj)
         map_obj.plot_map()
-        #map_obj.add_triangle()
-        #ratio_transport, ratio_err_transport = map_obj.get_ratio()
-        #ratios_transport.append(ratio_transport)
+        map_obj.add_triangle()
+        ratio_transport, ratio_err_transport = map_obj.get_ratio()
+        ratios_transport.append(ratio_transport)
+        ratios_err_transport.append(ratios_err_transport)
 
     plt.figure(figsize=(20, 12))
     ls = 'dashed'
     t_read_s = []
-    for elem in all_maps_blockade[3:]:
+    for elem in all_maps_blockade:
         t_read_s.append(elem[3])
     t_read_s = np.array(t_read_s) * 125 * 1e-6
     print(t_read_s)
-    plt.plot(t_read_s, ratios,
+    plt.plot(t_read_s, ratios_blockade,
              linestyle='None', marker='.')
-    plt.ylim(0, 1)
+    #plt.errorbar(t_read_s, ratios_blockade,
+    #             ratios_err_blockade,
+    #             linestyle='None', marker='.',
+    #             color='mediumvioletred', elinewidth=0.5)
+
+
+    #popt, pcov = curve_fit(exponential_model,
+    #                       ydata=ratios_blockade[:-3],
+    #                       xdata=t_read_s[:-3],
+    #                       sigma=ratios_err_blockade[:-3],
+    #                       p0=[1, 0.5, 0.5])
+
+
+    #popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
+
+    t = np.linspace(0, max(t_read_s), 100)
+    #print(popt, "\n", pcov)
+
+    #plt.plot(t, exponential_model(t, *popt),
+    #         label=r'$\tau_{blockade}$' + ': {:.2f} $\pm$ {:.2f}$\mu$s'.format(popt[0], pcov[0]),
+    #         color='mediumvioletred', linestyle=ls, alpha=0.8)
+    plt.legend()
     plt.ylabel('Intensity ratio')
     plt.xlabel(r'$T_{read}$ ($\mu$s)')
     plt.tight_layout()
