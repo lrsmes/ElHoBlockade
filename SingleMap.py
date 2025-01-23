@@ -90,8 +90,8 @@ class SingleMap:
                         mask_transport[j, i] = 1.0
 
             # Set values to zero outside the defined regions
-            self.blockade_triangle = self.map * mask_blockade
-            self.transport_triangle = self.map * mask_transport
+            self.blockade_triangle = np.array(self.map * mask_blockade)
+            self.transport_triangle = np.array(self.map * mask_transport)
             self.transport_mask = mask_transport
             self.transport_vertices = triangle2
         else:
@@ -105,9 +105,13 @@ class SingleMap:
 
             # Filter unique intersection points
             intersections = list(set(intersections))
-            self.blockade_triangle = 0
-            self.transport_triangle = 0
+            self.blockade_triangle = np.zeros_like(self.map)
+            self.transport_triangle = np.zeros_like(self.map)
             self.transport_vertices = intersections
+
+        plt.figure()
+        plt.imshow(self.blockade_triangle)
+        plt.show()
 
 
     def add_region(self, split_points):
@@ -161,12 +165,27 @@ class SingleMap:
             tuple: Depending on the mode, returns different ratio and uncertainty values.
         """
         if self.mode == 1:
-            ratio = np.mean(self.transport_triangle) / np.mean(self.blockade_triangle)
-            uncertainty = np.sqrt(ratio**2 * (
-                (np.std(self.transport_triangle) / np.mean(self.transport_triangle))**2 +
-                (np.std(self.blockade_triangle) / np.mean(self.blockade_triangle))**2
-            ))
-            return ratio, uncertainty
+            blockade_flatten = self.blockade_triangle.flatten()
+            transport_flatten = self.transport_triangle.flatten()
+            print(f'Read-out time: {self.tread}')
+            print('Blockade: ', np.round(np.mean(blockade_flatten), 3), " +- ",
+                  np.round(np.std(blockade_flatten), 3))
+            print('Non-Blockade: ', np.round(np.mean(transport_flatten), 3), " +- ",
+                  np.round(np.std(transport_flatten), 3))
+            if self.pulse_dir == -1:
+                ratio = np.mean(transport_flatten) / np.mean(blockade_flatten)
+                uncertainty = np.sqrt(ratio ** 2 * (
+                    (np.std(transport_flatten) / np.mean(transport_flatten)) ** 2 +
+                    (np.std(blockade_flatten) / np.mean(blockade_flatten)) ** 2
+                ))
+                return ratio, uncertainty
+            elif self.pulse_dir == 1:
+                ratio = np.mean(transport_flatten) / np.mean(blockade_flatten)
+                uncertainty = np.sqrt(ratio ** 2 * (
+                        (np.std(transport_flatten) / np.mean(transport_flatten)) ** 2 +
+                        (np.std(blockade_flatten) / np.mean(blockade_flatten)) ** 2
+                ))
+                return ratio, uncertainty
 
         elif self.mode in [2, 3]:
             ratios = []
@@ -196,6 +215,7 @@ class SingleMap:
 
         # Set y-axis limits
         ax.set_ylim(np.min(self.FG12), np.max(self.FG12))
+        ax.set_xlim(np.min(self.FG14), np.max(self.FG14))
 
         # Add optional features (lines, vertices, regions)
         if self.vertical_lines or self.horizontal_lines:
@@ -227,7 +247,7 @@ class SingleMap:
         plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_map.png'))
         plt.close()
 
-    def detect_lines(self, slope_interval1=(-18, -8), slope_interval2=(-0.9, -0.6), slope_diag=(0.9, 1.2),
+    def detect_lines(self, slope_interval1=(-18, -8), slope_interval2=(-0.9, -0.6), slope_diag=(0.93, 1.08),
                      min_distance=0.0025, max_distance=0.006):
         """
         Detect lines and select four lines to form a parallelogram based on minimum distance.
@@ -360,21 +380,29 @@ class SingleMap:
 
         # Connect intersections to visualize the parallelogram
         if len(blue_lines) == 2 and len(red_lines) == 2:
-            intersections = []
-            for line1 in red_lines:
-                for line2 in blue_lines:
-                    slope1, intercept1 = line1
-                    slope2, intercept2 = line2
+            def compute_intersections(red_lines, blue_lines):
+                """
+                Compute the intersection points of the four lines forming a parallelogram.
+                """
+                intersections = []
+                for line1 in red_lines:
+                    for line2 in blue_lines:
+                        slope1, intercept1 = line1
+                        slope2, intercept2 = line2
 
-                    # Solve for intersection point
-                    if slope1 != slope2:  # Ensure lines are not parallel
-                        x_intersect = (intercept2 - intercept1) / (slope1 - slope2)
-                        y_intersect = slope1 * x_intersect + intercept1
-                        intersections.append([x_intersect, y_intersect])
+                        if slope1 != slope2:  # Ensure lines are not parallel
+                            x_intersect = (intercept2 - intercept1) / (slope1 - slope2)
+                            y_intersect = slope1 * x_intersect + intercept1
+                            intersections.append([x_intersect, y_intersect])
+                return intersections
+
+            # Compute initial intersections
+            intersections = compute_intersections(red_lines, blue_lines)
+            intersections = np.array(intersections)
 
             # Plot intersections as a parallelogram
             if len(intersections) == 4:
-                intersections = np.array(intersections)
+                #intersections = np.array(intersections)
                 ax.plot(
                     np.append(intersections[:, 0], intersections[0, 0]),
                     np.append(intersections[:, 1], intersections[0, 1]),
@@ -386,7 +414,7 @@ class SingleMap:
         plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_lines.png'))
         plt.close()
 
-    def add_line(self, slope, intercept):
+    def add_vertical_line(self, slope, x_val):
         """
         Add a new line to the lines list.
 
@@ -394,41 +422,115 @@ class SingleMap:
             slope (float): Slope of the line (m in y = mx + b).
             intercept (float): Intercept of the line (b in y = mx + b).
         """
-        if self.lines is None:
-            self.lines = []
-        self.lines.append((slope, intercept))
+        if self.vertical_lines is None:
+            self.vertical_lines = []
+        intercept = self.FG12[-1] - x_val * slope
+        self.vertical_lines.append((slope, intercept))
         print(f"Added line: y = {slope}x + {intercept}")
 
-    def move_line(self, index, new_slope, new_intercept):
+    def add_horizontal_line(self, slope, y_val):
         """
-        Modify the slope and intercept of an existing line.
+        Add a new line to the lines list.
 
         Parameters:
-            index (int): Index of the line in the lines list to modify.
+            slope (float): Slope of the line (m in y = mx + b).
+            intercept (float): Intercept of the line (b in y = mx + b).
+        """
+        if self.horizontal_lines is None:
+            self.horizontal_lines = []
+        intercept = y_val - self.FG14[0] * slope
+        self.horizontal_lines.append((slope, intercept))
+        print(f"Added line: y = {slope}x + {intercept}")
+
+    def move_vertical_line(self, index, new_slope, new_x_val):
+        """
+        Modify the slope and intercept of an existing vertical line.
+
+        Parameters:
+            index (int): Index of the vertical line to modify.
             new_slope (float): New slope for the line.
             new_intercept (float): New intercept for the line.
         """
-        if self.lines is None or index >= len(self.lines):
-            print("Invalid line index. No changes made.")
+        new_intercept = self.FG12[-1] - new_x_val * new_slope
+        if self.vertical_lines is None:
+            print("Invalid vertical line index. No changes made.")
             return
+        elif index >= len(self.vertical_lines):
+            self.vertical_lines.append((np.float64(new_slope), np.float64(new_intercept)))
+        old_line = self.vertical_lines[index]
+        self.vertical_lines[index] = (np.float64(new_slope), np.float64(new_intercept))
+        print(
+            f"Moved vertical line {index} from y = {old_line[0]}x + {old_line[1]} to y = {new_slope}x + {new_intercept}")
 
-        old_line = self.lines[index]
-        self.lines[index] = (new_slope, new_intercept)
-        print(f"Moved line {index} from y = {old_line[0]}x + {old_line[1]} to y = {new_slope}x + {new_intercept}")
-
-    def delete_line(self, index):
+    def move_horizontal_line(self, index, new_slope, new_y_val):
         """
-        Remove a line from the lines list.
+        Modify the slope and intercept of an existing horizontal line.
 
         Parameters:
-            index (int): Index of the line in the lines list to remove.
+            index (int): Index of the horizontal line to modify.
+            new_slope (float): New slope for the line.
+            new_intercept (float): New intercept for the line.
         """
-        if self.lines is None or index >= len(self.lines):
-            print("Invalid line index. No line deleted.")
+        new_intercept = new_y_val - self.FG14[0] * new_slope
+        if self.horizontal_lines is None or index >= len(self.horizontal_lines):
+            print("Invalid horizontal line index. No changes made.")
             return
+        elif index >= len(self.horizontal_lines):
+            self.horizontal_lines.append((np.float64(new_slope), np.float64(new_intercept)))
+        old_line = self.horizontal_lines[index]
+        self.horizontal_lines[index] = (np.float64(new_slope), np.float64(new_intercept))
+        print(
+            f"Moved horizontal line {index} from y = {old_line[0]}x + {old_line[1]} to y = {new_slope}x + {new_intercept}")
 
-        removed_line = self.lines.pop(index)
-        print(f"Deleted line: y = {removed_line[0]}x + {removed_line[1]}")
+    def delete_vertical_line(self, index):
+        """
+        Remove a vertical line from the vertical lines list.
+
+        Parameters:
+            index (int): Index of the vertical line to remove.
+        """
+        if self.vertical_lines is None or index >= len(self.vertical_lines):
+            print("Invalid vertical line index. No line deleted.")
+            return
+        removed_line = self.vertical_lines.pop(index)
+        print(f"Deleted vertical line: y = {removed_line[0]}x + {removed_line[1]}")
+
+    def delete_horizontal_line(self, index):
+        """
+        Remove a horizontal line from the horizontal lines list.
+
+        Parameters:
+            index (int): Index of the horizontal line to remove.
+        """
+        if self.horizontal_lines is None or index >= len(self.horizontal_lines):
+            print("Invalid horizontal line index. No line deleted.")
+            return
+        removed_line = self.horizontal_lines.pop(index)
+        print(f"Deleted horizontal line: y = {removed_line[0]}x + {removed_line[1]}")
+
+    def get_vertical_lines(self):
+        """
+        Get the list of vertical lines.
+
+        Returns:
+            list of tuples: Each tuple represents a vertical line as (slope, intercept).
+        """
+        if self.vertical_lines is None:
+            print("No vertical lines available.")
+            return []
+        return self.vertical_lines
+
+    def get_horizontal_lines(self):
+        """
+        Get the list of horizontal lines.
+
+        Returns:
+            list of tuples: Each tuple represents a horizontal line as (slope, intercept).
+        """
+        if self.horizontal_lines is None:
+            print("No horizontal lines available.")
+            return []
+        return self.horizontal_lines
 
     def subtract_background(self):
         """

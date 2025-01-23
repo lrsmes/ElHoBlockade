@@ -896,14 +896,52 @@ def both_dir_400mT():
     ###########
     print('###################### Blockade #########################')
     ratios = []
-    for map in all_maps_blockade:
+    for map in all_maps_blockade[1:]:
         print(map[3])
         map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], 1, 0.0095, 1, file_dir)
         map_obj.subtract_background()
         map_obj.detect_lines()
         single_maps_blockade.append(map_obj)
-        map_obj.plot_map()
+
+    # 2950
+    single_maps_blockade[0].move_vertical_line(0, -10.30, 5.1787)
+    single_maps_blockade[0].move_vertical_line(1, -10.30, 5.1833)
+
+    # 4900
+    single_maps_blockade[1].move_vertical_line(0, -10.0, 5.1784)
+    single_maps_blockade[1].move_vertical_line(1, -10.0, 5.1827)
+
+    # 8800
+    single_maps_blockade[3].move_vertical_line(1, -10.0, 5.1825)
+    single_maps_blockade[3].move_horizontal_line(0, -0.85, 5.268)
+
+    # 10750
+    single_maps_blockade[4].move_vertical_line(0, -12.0, 5.1779)
+    single_maps_blockade[4].move_horizontal_line(0, -0.85, 5.2684)
+
+    # 12700
+    single_maps_blockade[5].move_vertical_line(1, -9.0, 5.18212)
+    single_maps_blockade[5].move_horizontal_line(0, -0.85, 5.2685)
+
+    # 14650
+    single_maps_blockade[6].move_horizontal_line(0, -0.85, 5.2686)
+
+    # 16600
+    single_maps_blockade[7].move_vertical_line(1, -10.0, 5.18176)
+    single_maps_blockade[7].move_horizontal_line(0, -0.85, 5.2687)
+
+    # 20500
+    single_maps_blockade[9].move_vertical_line(1, -10.0, 5.18178)
+    single_maps_blockade[9].move_horizontal_line(0, -0.85, 5.2689)
+
+    # 22450
+    single_maps_blockade[10].move_vertical_line(1, -10.0, 5.18181)
+    single_maps_blockade[10].move_horizontal_line(0, -0.85, 5.269)
+
+    for map_obj in single_maps_blockade:
+        print(map_obj.get_vertical_lines())
         map_obj.add_triangle()
+        map_obj.plot_map()
         ratio, sigma_ratio = map_obj.get_ratio()
         ratios_blockade.append(ratio)
         ratios_err_blockade.append(sigma_ratio)
@@ -927,7 +965,7 @@ def both_dir_400mT():
     plt.figure(figsize=(20, 12))
     ls = 'dashed'
     t_read_s = []
-    for elem in all_maps_blockade:
+    for elem in all_maps_blockade[1:]:
         t_read_s.append(elem[3])
     t_read_s = np.array(t_read_s) * 125 * 1e-6
     print(t_read_s)
