@@ -115,14 +115,14 @@ class SingleMap:
         plt.imshow(self.blockade_triangle)
         plt.show()
 
-
+    """
     def add_region(self, split_points):
-        """
+        ""
         Add a custom region defined by vertices to the map.
 
         Parameters:
             split_points (list of tuples): List of (x, y) coordinates defining split points.
-        """
+        ""
         if self.mode == 1:
             # Define the smaller triangle
             smaller_triangle = [self.transport_vertices[0], split_points[0], split_points[1]]
@@ -158,6 +158,67 @@ class SingleMap:
                         if is_point_in_polygon(x, y, poly):
                             region[j, i] = 1.0
                 self.regions.append(self.map * region)
+        """
+
+    def add_region(self, offset):
+        """
+        Add a custom region to the map, defined by a new line parallel to the line formed
+        by two transport vertices and bounded by the last region border or the diagonal of the
+        parallelogram if no regions exist.
+
+        Parameters:
+            offset (float): Offset to create the parallel line.
+            split_points (list of tuples, optional): Optional list of (x, y) coordinates defining split points.
+        """
+        if self.transport_vertices is None or len(self.transport_vertices) < 2:
+            print("Insufficient transport vertices to define regions.")
+            return
+
+        # Use diagonal of the parallelogram as the first region border if no regions exist
+        if not self.regions:
+            diagonal = [self.transport_vertices[0], self.transport_vertices[1]]
+            self.region_boundaries.append(diagonal)
+
+        # Get the last region border
+        last_region_border = self.regions[-1]
+
+        # Define a new line parallel to the line formed by two transport vertices
+        p1, p2 = self.transport_vertices[0], self.transport_vertices[1]
+        slope = (p2[1] - p1[1]) / (p2[0] - p1[0]) if (p2[0] - p1[0]) != 0 else None
+
+        # Calculate new line parallel to the existing line
+        if slope is not None:
+            intercept = p1[1] - slope * p1[0]  # Line equation: y = slope * x + intercept
+            new_line = lambda x: slope * x + intercept + offset  # Parallel line offset by 'offset'
+        else:
+            # Handle vertical line case
+            new_line = lambda x: p1[1] + offset  # Vertical line offset in y
+
+        # Define the new region between the last region border and the new parallel line
+        region = np.zeros_like(self.map, dtype=float)
+        for i, x in enumerate(self.FG14):
+            for j, y in enumerate(self.FG12):
+                # Check if point (x, y) is between the last border and the new line
+                if slope is not None:
+                    y_last = slope * x + (last_region_border[0][1] - slope * last_region_border[0][0])
+                    y_new = new_line(x)
+                    if min(y_last, y_new) <= y <= max(y_last, y_new):
+                        region[j, i] = 1.0
+                else:
+                    # Vertical line case
+                    if min(last_region_border[0][1], new_line(x)) <= y <= max(last_region_border[0][1], new_line(x)):
+                        region[j, i] = 1.0
+
+        # Add the new region border
+        if slope is not None:
+            new_region_border = [(x, new_line(x)) for x in self.FG14]
+        else:
+            new_region_border = [(p1[0] + offset, y) for y in self.FG12]
+        self.regions.append(new_region_border)
+
+        # Add the region to the map
+        self.map = self.map * region
+
 
     def get_ratio(self):
         """
