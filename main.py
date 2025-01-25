@@ -895,6 +895,7 @@ def both_dir_400mT():
     # Blockade
     ###########
     print('###################### Blockade #########################')
+    """
     ratios = []
     for map in all_maps_blockade[1:]:
         print(map[3])
@@ -925,43 +926,162 @@ def both_dir_400mT():
 
     # 14650
     single_maps_blockade[6].move_horizontal_line(0, -0.85, 5.2686)
+    single_maps_blockade[6].move_vertical_line(0, -9.0, 5.17684)
+    single_maps_blockade[6].move_vertical_line(1, -9.0, 5.18196)
 
     # 16600
-    single_maps_blockade[7].move_vertical_line(1, -10.0, 5.18176)
-    single_maps_blockade[7].move_horizontal_line(0, -0.85, 5.2687)
+    single_maps_blockade[7].move_vertical_line(1, -10.0, 5.18185)
+    single_maps_blockade[7].move_horizontal_line(0, -0.85, 5.26865)
+
+    # 18550
+    single_maps_blockade[8].move_vertical_line(1, -10.0, 5.18176)
+    single_maps_blockade[8].move_horizontal_line(0, -0.85, 5.2688)
 
     # 20500
     single_maps_blockade[9].move_vertical_line(1, -10.0, 5.18178)
     single_maps_blockade[9].move_horizontal_line(0, -0.85, 5.2689)
 
     # 22450
+    single_maps_blockade[10].move_vertical_line(0, -10.0, 5.17699)
     single_maps_blockade[10].move_vertical_line(1, -10.0, 5.18181)
     single_maps_blockade[10].move_horizontal_line(0, -0.85, 5.269)
 
+    # 24400
+    single_maps_blockade[11].move_vertical_line(1, -10.0, 5.18181)
+    single_maps_blockade[11].move_vertical_line(0, -10.0, 5.17723)
+
+    # 26350
+    single_maps_blockade[12].move_vertical_line(1, -10.0, 5.18163)
+    #single_maps_blockade[12].move_vertical_line(0, -10.0, 5.17672)
+    single_maps_blockade[12].move_horizontal_line(0, -0.85, 5.2688)
+
+    # 28300
+    single_maps_blockade[13].move_vertical_line(1, -10.0, 5.18166)
+    single_maps_blockade[13].move_horizontal_line(0, -0.85, 5.2693)
+
+    # 30250
+    single_maps_blockade[14].move_vertical_line(0, -10.0, 5.17723)
+    single_maps_blockade[14].move_vertical_line(1, -10.0, 5.18172)
+    single_maps_blockade[14].move_horizontal_line(0, -0.85, 5.2696)
+
+    # 32200
+    single_maps_blockade[15].move_vertical_line(1, -10.0, 5.18166)
+    single_maps_blockade[15].move_horizontal_line(0, -0.85, 5.2694)
+
+    # 34150
+    single_maps_blockade[16].move_vertical_line(0, -10.0, 5.17723)
+    single_maps_blockade[16].move_vertical_line(1, -10.0, 5.18181)
+    single_maps_blockade[16].move_horizontal_line(0, -0.85, 5.2694)
+
+    # 36100
+    single_maps_blockade[17].move_vertical_line(1, -10.0, 5.18169)
+    single_maps_blockade[17].move_vertical_line(0, -10.0, 5.17638)
+
+    # 38050
+    single_maps_blockade[18].move_vertical_line(0, -10.0, 5.17699)
+    single_maps_blockade[18].move_vertical_line(1, -10.0, 5.18163)
+    single_maps_blockade[18].move_horizontal_line(0, -0.85, 5.2694)
+
+    # 40000
+    single_maps_blockade[19].move_vertical_line(0, -10.0, 5.17665)
+    single_maps_blockade[19].move_vertical_line(1, -10.0, 5.18172)
+    single_maps_blockade[19].move_horizontal_line(0, -0.85, 5.2697)
+
+
+
     for map_obj in single_maps_blockade:
-        print(map_obj.get_vertical_lines())
+        #print(map_obj.get_vertical_lines())
         map_obj.add_triangle()
         map_obj.plot_map()
         ratio, sigma_ratio = map_obj.get_ratio()
         ratios_blockade.append(ratio)
         ratios_err_blockade.append(sigma_ratio)
-
+    """
     #############
     # Transport
     #############
     print('###################### Transport #########################')
-    for map in all_maps_transport:
+    for map in all_maps_transport[1:]:
         print(map[3])
         map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], -1, 0.0095, 1, file_dir)
         map_obj.subtract_background()
         map_obj.detect_lines()
         single_maps_transport.append(map_obj)
-        map_obj.plot_map()
+
+    # 880
+    single_maps_transport[0].move_vertical_line(0, -10, 5.1732)
+    single_maps_transport[0].move_vertical_line(1, -10, 5.17755)
+    single_maps_transport[0].move_horizontal_line(1, -0.85, 5.2848)
+
+    # 1560
+    single_maps_transport[1].move_vertical_line(0, -10, 5.1742)
+    single_maps_transport[1].move_vertical_line(1, -10, 5.17835)
+    single_maps_transport[1].move_horizontal_line(0, -0.85, 5.2761)
+    single_maps_transport[1].move_horizontal_line(1, -0.85, 5.2836)
+
+    # 2240
+    single_maps_transport[2].move_vertical_line(0, -10, 5.1746)
+    single_maps_transport[2].move_vertical_line(1, -10, 5.1788)
+    single_maps_transport[2].move_horizontal_line(0, -0.85, 5.275)
+    single_maps_transport[2].move_horizontal_line(1, -0.85, 5.2827)
+
+    # 2920
+    single_maps_transport[3].move_vertical_line(0, -10, 5.17485)
+    single_maps_transport[3].move_vertical_line(1, -10, 5.17931)
+    #single_maps_transport[2].move_horizontal_line(0, -0.85, 5.2751)
+    single_maps_transport[3].move_horizontal_line(1, -0.85, 5.2823)
+
+    # 3600
+    single_maps_transport[4].move_vertical_line(0, -10, 5.17558)
+    single_maps_transport[4].move_vertical_line(1, -10, 5.1793)
+    single_maps_transport[4].move_horizontal_line(0, -0.85, 5.2746)
+    single_maps_transport[4].move_horizontal_line(1, -0.85, 5.2812)
+
+    # 4280
+    single_maps_transport[5].move_vertical_line(0, -10, 5.17547)
+    single_maps_transport[5].move_vertical_line(1, -10, 5.17973)
+    single_maps_transport[5].move_horizontal_line(0, -0.85, 5.2742)
+    single_maps_transport[5].move_horizontal_line(1, -0.85, 5.2815)
+
+    # 4960
+    single_maps_transport[6].move_vertical_line(0, -10, 5.175866)
+    single_maps_transport[6].move_vertical_line(1, -10, 5.1797)
+    single_maps_transport[6].move_horizontal_line(0, -0.85, 5.27422)
+    single_maps_transport[6].move_horizontal_line(1, -0.85, 5.2808)
+
+    # 5640
+    single_maps_transport[7].move_vertical_line(0, -10, 5.17612)
+    single_maps_transport[7].move_vertical_line(1, -10, 5.1799)
+    single_maps_transport[7].move_horizontal_line(0, -0.85, 5.2741)
+    single_maps_transport[7].move_horizontal_line(1, -0.85, 5.2806)
+
+    # 6320
+    single_maps_transport[8].move_vertical_line(0, -10, 5.176)
+    single_maps_transport[8].move_vertical_line(1, -10, 5.18)
+    single_maps_transport[8].move_horizontal_line(0, -0.85, 5.2737)
+    single_maps_transport[8].move_horizontal_line(1, -0.85, 5.2802)
+
+    # 7000
+    single_maps_transport[9].move_vertical_line(0, -10, 5.17613)
+    single_maps_transport[9].move_vertical_line(1, -10, 5.18)
+    single_maps_transport[9].move_horizontal_line(0, -0.85, 5.27355)
+    single_maps_transport[9].move_horizontal_line(1, -0.85, 5.28014)
+
+
+
+    for map_obj in single_maps_transport:
         map_obj.add_triangle()
+        map_obj.plot_map()
         ratio_transport, ratio_err_transport = map_obj.get_ratio()
         ratios_transport.append(ratio_transport)
         ratios_err_transport.append(ratios_err_transport)
 
+    ########################
+    # Plotting and fitting
+    ########################
+
+    # Blockade
+    """
     plt.figure(figsize=(20, 12))
     ls = 'dashed'
     t_read_s = []
@@ -969,19 +1089,19 @@ def both_dir_400mT():
         t_read_s.append(elem[3])
     t_read_s = np.array(t_read_s) * 125 * 1e-6
     print(t_read_s)
-    plt.plot(t_read_s, ratios_blockade,
-             linestyle='None', marker='.')
+    plt.scatter(t_read_s, ratios_blockade,
+                facecolors='none', edgecolors='orangered')
     #plt.errorbar(t_read_s, ratios_blockade,
     #             ratios_err_blockade,
     #             linestyle='None', marker='.',
     #             color='mediumvioletred', elinewidth=0.5)
 
 
-    #popt, pcov = curve_fit(exponential_model,
-    #                       ydata=ratios_blockade[:-3],
-    #                       xdata=t_read_s[:-3],
-    #                       sigma=ratios_err_blockade[:-3],
-    #                       p0=[1, 0.5, 0.5])
+    popt, pcov = curve_fit(exponential_model,
+                           ydata=ratios_blockade,
+                           xdata=t_read_s,
+                           sigma=ratios_err_blockade,
+                           p0=[1, 0.5, 0.5])
 
 
     #popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
@@ -989,19 +1109,22 @@ def both_dir_400mT():
     t = np.linspace(0, max(t_read_s), 100)
     #print(popt, "\n", pcov)
 
-    #plt.plot(t, exponential_model(t, *popt),
-    #         label=r'$\tau_{blockade}$' + ': {:.2f} $\pm$ {:.2f}$\mu$s'.format(popt[0], pcov[0]),
-    #         color='mediumvioletred', linestyle=ls, alpha=0.8)
+    plt.plot(t, exponential_model(t, *popt),
+             label=f'$\tau_b$ : {popt[0]} $\pm$ {pcov[0]}$\mu$s',
+             color='mediumblue', linestyle=ls, alpha=0.8)
     plt.legend()
     plt.ylabel('Intensity ratio')
     plt.xlabel(r'$T_{read}$ ($\mu$s)')
     plt.tight_layout()
     plt.savefig(os.path.join(file_dir, f'exp_fit_blockade.png'))
+    """
+
+    # Transport
 
     plt.figure(figsize=(20, 12))
     ls = 'dashed'
     t_read_s = []
-    for elem in all_maps_transport:
+    for elem in all_maps_transport[1:]:
         t_read_s.append(elem[3])
     t_read_s = np.array(t_read_s) * 125 * 1e-6
     print(t_read_s)

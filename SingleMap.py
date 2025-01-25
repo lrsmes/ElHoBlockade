@@ -89,9 +89,11 @@ class SingleMap:
                     if is_point_in_polygon(x, y, triangle2):
                         mask_transport[j, i] = 1.0
 
-            # Set values to zero outside the defined regions
+            # Set values to NaN outside the defined regions
             self.blockade_triangle = np.array(self.map * mask_blockade)
+            self.blockade_triangle[self.blockade_triangle == 0] = np.nan
             self.transport_triangle = np.array(self.map * mask_transport)
+            self.transport_triangle[self.transport_triangle == 0] = np.nan
             self.transport_mask = mask_transport
             self.transport_vertices = triangle2
         else:
@@ -168,22 +170,22 @@ class SingleMap:
             blockade_flatten = self.blockade_triangle.flatten()
             transport_flatten = self.transport_triangle.flatten()
             print(f'Read-out time: {self.tread}')
-            print('Blockade: ', np.round(np.mean(blockade_flatten), 3), " +- ",
-                  np.round(np.std(blockade_flatten), 3))
-            print('Non-Blockade: ', np.round(np.mean(transport_flatten), 3), " +- ",
-                  np.round(np.std(transport_flatten), 3))
+            print('Blockade: ', np.round(np.nanmean(blockade_flatten), 3), " +- ",
+                  np.round(np.nanstd(blockade_flatten), 3))
+            print('Non-Blockade: ', np.round(np.nanmean(transport_flatten), 3), " +- ",
+                  np.round(np.nanstd(transport_flatten), 3))
             if self.pulse_dir == -1:
-                ratio = np.mean(transport_flatten) / np.mean(blockade_flatten)
+                ratio = np.nanmean(transport_flatten) / np.nanmean(blockade_flatten)
                 uncertainty = np.sqrt(ratio ** 2 * (
-                    (np.std(transport_flatten) / np.mean(transport_flatten)) ** 2 +
-                    (np.std(blockade_flatten) / np.mean(blockade_flatten)) ** 2
+                    (np.nanstd(transport_flatten) / np.nanmean(transport_flatten)) ** 2 +
+                    (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
                 ))
                 return ratio, uncertainty
             elif self.pulse_dir == 1:
-                ratio = np.mean(transport_flatten) / np.mean(blockade_flatten)
+                ratio = np.nanmean(transport_flatten) / np.nanmean(blockade_flatten)
                 uncertainty = np.sqrt(ratio ** 2 * (
-                        (np.std(transport_flatten) / np.mean(transport_flatten)) ** 2 +
-                        (np.std(blockade_flatten) / np.mean(blockade_flatten)) ** 2
+                        (np.nanstd(transport_flatten) / np.nanmean(transport_flatten)) ** 2 +
+                        (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
                 ))
                 return ratio, uncertainty
 
@@ -472,7 +474,7 @@ class SingleMap:
             new_intercept (float): New intercept for the line.
         """
         new_intercept = new_y_val - self.FG14[0] * new_slope
-        if self.horizontal_lines is None or index >= len(self.horizontal_lines):
+        if self.horizontal_lines is None:
             print("Invalid horizontal line index. No changes made.")
             return
         elif index >= len(self.horizontal_lines):
