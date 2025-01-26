@@ -17,7 +17,7 @@ from skimage.color import label2rgb, rgb2gray
 
 class SingleMap:
     def __init__(self, FG12=None, FG14=None, Demod1R=None, tini=None, tread=None,
-                 pulse_dir=None, comp_fac=None, mode=None, file_dir=None):
+                 pulse_dir=None, mode=None, file_dir=None):
         """
         Initialize the SingleMap class with optional parameters.
 
@@ -37,7 +37,7 @@ class SingleMap:
         self.tini = tini
         self.tread = tread
         self.pulse_dir = pulse_dir
-        self.comp_fac = comp_fac
+        self.comp_fac = None
         self.mode = mode
         self.dir = file_dir
         self.horizontal_lines = None
@@ -47,6 +47,7 @@ class SingleMap:
         self.transport_mask = None
         self.transport_vertices = None
         self.regions = []
+        self.region_boundaries = []
 
     def add_triangle(self, lines=None):
         """
@@ -111,9 +112,9 @@ class SingleMap:
             self.transport_triangle = np.zeros_like(self.map)
             self.transport_vertices = intersections
 
-        plt.figure()
-        plt.imshow(self.blockade_triangle)
-        plt.show()
+        #plt.figure()
+        #plt.imshow(self.blockade_triangle)
+        #plt.show()
 
     """
     def add_region(self, split_points):
@@ -162,63 +163,95 @@ class SingleMap:
 
     def add_region(self, offset):
         """
-        Add a custom region to the map, defined by a new line parallel to the line formed
-        by two transport vertices and bounded by the last region border or the diagonal of the
-        parallelogram if no regions exist.
+        Add a custom region to the map, defined by the offset line
+        intersecting the edges of a triangle.
 
         Parameters:
             offset (float): Offset to create the parallel line.
-            split_points (list of tuples, optional): Optional list of (x, y) coordinates defining split points.
         """
-        if self.transport_vertices is None or len(self.transport_vertices) < 2:
-            print("Insufficient transport vertices to define regions.")
+        if self.transport_vertices is None or len(self.transport_vertices) < 3:
+            print("Insufficient transport vertices to define a triangle.")
+            return
+        if self.region_boundaries:
+            triangle = [*self.region_boundaries[-1], self.transport_vertices[2]]
+            p1, p2 = self.region_boundaries[-1][0], self.region_boundaries[-1][1]
+        else:
+            triangle = self.transport_vertices  # Assume the first three vertices form the triangle
+            p1, p2 = self.transport_vertices[0], self.transport_vertices[1]
+
+        # Define the main line equation (slope and intercept)
+        if (p2[0] - p1[0]) != 0:
+            slope_main = (p2[1] - p1[1]) / (p2[0] - p1[0])
+            intercept_main = p1[1] - slope_main * p1[0]
+        else:
+            slope_main = None  # Vertical line
+            intercept_main = p1[0]  # Use x-intercept for vertical line
+
+        # Define the offset line
+        if slope_main is not None:
+            slope_offset = slope_main
+            intercept_offset = intercept_main + offset
+            offset_line = (slope_offset, intercept_offset)
+        else:
+            # Vertical line offset
+            x_offset = intercept_main + offset
+            offset_line = None
+
+        # Find intersection points between the offset line and triangle edges
+        intersections = []
+        for i in range(3):
+            edge_start, edge_end = triangle[i], triangle[(i + 1) % 3]
+
+            # Calculate the slope and intercept of the current edge
+            if (edge_end[0] - edge_start[0]) != 0:
+                slope_edge = (edge_end[1] - edge_start[1]) / (edge_end[0] - edge_start[0])
+                intercept_edge = edge_start[1] - slope_edge * edge_start[0]
+                edge_line = (slope_edge, intercept_edge)
+
+                # Find intersection
+                if offset_line is not None:
+                    intersection = find_intersection(offset_line, edge_line)
+                else:
+                    # Vertical line intersection
+                    x_intersection = x_offset
+                    y_intersection = slope_edge * x_intersection + intercept_edge
+                    intersection = (x_intersection, y_intersection)
+            else:
+                # Edge is vertical
+                x_intersection = edge_start[0]
+                if offset_line is not None:
+                    y_intersection = slope_offset * x_intersection + intercept_offset
+                else:
+                    # Both lines are vertical, no intersection
+                    intersection = None
+                    continue
+                intersection = (x_intersection, y_intersection)
+
+            # Check if intersection is within the bounds of the edge
+            if intersection:
+                x, y = intersection
+                if min(edge_start[0], edge_end[0]) <= x <= max(edge_start[0], edge_end[0]) and \
+                        min(edge_start[1], edge_end[1]) <= y <= max(edge_start[1], edge_end[1]):
+                    intersections.append(intersection)
+
+        # Ensure we have two valid intersection points
+        if len(intersections) < 2:
+            print("Offset line does not properly intersect the triangle.")
             return
 
-        # Use diagonal of the parallelogram as the first region border if no regions exist
-        if not self.regions:
-            diagonal = [self.transport_vertices[0], self.transport_vertices[1]]
-            self.region_boundaries.append(diagonal)
-
-        # Get the last region border
-        last_region_border = self.regions[-1]
-
-        # Define a new line parallel to the line formed by two transport vertices
-        p1, p2 = self.transport_vertices[0], self.transport_vertices[1]
-        slope = (p2[1] - p1[1]) / (p2[0] - p1[0]) if (p2[0] - p1[0]) != 0 else None
-
-        # Calculate new line parallel to the existing line
-        if slope is not None:
-            intercept = p1[1] - slope * p1[0]  # Line equation: y = slope * x + intercept
-            new_line = lambda x: slope * x + intercept + offset  # Parallel line offset by 'offset'
-        else:
-            # Handle vertical line case
-            new_line = lambda x: p1[1] + offset  # Vertical line offset in y
-
-        # Define the new region between the last region border and the new parallel line
+        # Create region between the last region boundary and offset line
         region = np.zeros_like(self.map, dtype=float)
         for i, x in enumerate(self.FG14):
             for j, y in enumerate(self.FG12):
-                # Check if point (x, y) is between the last border and the new line
-                if slope is not None:
-                    y_last = slope * x + (last_region_border[0][1] - slope * last_region_border[0][0])
-                    y_new = new_line(x)
-                    if min(y_last, y_new) <= y <= max(y_last, y_new):
-                        region[j, i] = 1.0
-                else:
-                    # Vertical line case
-                    if min(last_region_border[0][1], new_line(x)) <= y <= max(last_region_border[0][1], new_line(x)):
+                if is_point_in_polygon(x, y, triangle):
+                    y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
+                    if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
                         region[j, i] = 1.0
 
-        # Add the new region border
-        if slope is not None:
-            new_region_border = [(x, new_line(x)) for x in self.FG14]
-        else:
-            new_region_border = [(p1[0] + offset, y) for y in self.FG12]
-        self.regions.append(new_region_border)
-
-        # Add the region to the map
-        self.map = self.map * region
-
+        # Update regions and map
+        self.region_boundaries.append(intersections)
+        self.regions.append(self.map * region)
+        self.regions[-1][self.regions[-1] == 0] = np.nan
 
     def get_ratio(self):
         """
@@ -227,8 +260,8 @@ class SingleMap:
         Returns:
             tuple: Depending on the mode, returns different ratio and uncertainty values.
         """
+        blockade_flatten = self.blockade_triangle.flatten()
         if self.mode == 1:
-            blockade_flatten = self.blockade_triangle.flatten()
             transport_flatten = self.transport_triangle.flatten()
             print(f'Read-out time: {self.tread}')
             print('Blockade: ', np.round(np.nanmean(blockade_flatten), 3), " +- ",
@@ -254,12 +287,13 @@ class SingleMap:
             ratios = []
             uncertainties = []
             for region in self.regions:
-                region_mean = np.mean(self.blockade_triangle) / np.mean(region)
+                region_flatten = region.flatten()
+                region_mean = np.nanmean(region_flatten) / np.nanmean(blockade_flatten)
                 ratios.append(region_mean)
                 uncertainties.append(np.std(region) / np.mean(region))
             return ratios, uncertainties
 
-    def plot_map(self, reg=False):
+    def plot_map(self):
         """
         Plot the map with optional regions using pcolormesh and include optional features like lines, vertices, and regions.
 
@@ -291,8 +325,8 @@ class SingleMap:
             vertices = np.array(self.transport_vertices)
             ax.scatter(vertices[:, 0], vertices[:, 1], color="red", label="Transport Vertices")  # Plot vertices
 
-        if reg and hasattr(self, 'regions') and self.regions:
-            for region in self.regions:
+        if self.regions:
+            for region in self.region_boundaries:
                 vertices = np.array(region)  # Assuming regions store vertices as lists of (x, y)
                 ax.plot(vertices[:, 0], vertices[:, 1], "r--", label="Region Boundary")  # Plot region boundaries
 
@@ -620,7 +654,10 @@ class SingleMap:
         print(slope)
 
         # Create a linear background to subtract
-        FG14_slope = slope * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
+        if self.comp_fac:
+            FG14_slope = self.comp_fac * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
+        else:
+            FG14_slope = slope * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
         background = np.tile(FG14_slope, (self.map.shape[0], 1))  # Repeat for all rows (FG12)
 
         #plt.figure()
@@ -649,6 +686,9 @@ class SingleMap:
         min_bin = np.min(self.map)
         max_bin = np.max(self.map)
         self.map = (self.map - min_bin) / (max_bin - min_bin)
+
+    def set_comp_fac(self, comp_fac):
+        self.comp_fac = comp_fac
 
 
 def find_intersection(line1, line2):
