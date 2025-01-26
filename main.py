@@ -935,6 +935,7 @@ def both_dir_400mT():
 
     # 18550
     single_maps_blockade[8].move_vertical_line(1, -10.0, 5.18176)
+    single_maps_blockade[8].move_vertical_line(0, -10.0, 5.17782)
     single_maps_blockade[8].move_horizontal_line(0, -0.85, 5.2688)
 
     # 20500
@@ -1157,7 +1158,7 @@ def both_dir_400mT():
         map_obj.plot_map()
         ratio_transport, ratio_err_transport = map_obj.get_ratio()
         ratios_transport.append(ratio_transport)
-        ratios_err_transport.append(ratios_err_transport)
+        ratios_err_transport.append(ratio_err_transport)
 
     ########################
     # Plotting and fitting
@@ -1210,11 +1211,35 @@ def both_dir_400mT():
     t_read_s = np.array(t_read_s) * 125 * 1e-6
     print(t_read_s)
     ratios_transport = np.array(ratios_transport)
+    ratios_err_transport = np.array(ratios_err_transport)
     print(ratios_transport[:, 0])
     plt.scatter(t_read_s, ratios_transport[:, 0],
                  facecolors='none', edgecolors='orangered')
+
     plt.scatter(t_read_s, ratios_transport[:, 1],
                 facecolors='none', edgecolors='mediumvioletred')
+
+    popt, pcov = curve_fit(exponential_model,
+                           ydata=ratios_transport[9:, 0],
+                           xdata=t_read_s[9:],
+                           sigma=ratios_err_transport[9:, 0],
+                           p0=[1, 0.5, 0.5])
+
+    plt.plot(t, exponential_model(t, *popt),
+             label=f'$\tau_b$ : {popt[0]} $\pm$ {pcov[0]}$\mu$s',
+             color='mediumblue', linestyle=ls, alpha=0.8)
+
+    popt1, pcov1 = curve_fit(exponential_model,
+                           ydata=ratios_transport[9:, 1],
+                           xdata=t_read_s[9:],
+                           sigma=ratios_err_transport[9:, 1],
+                           p0=[1, 0.5, 0.5])
+
+    plt.plot(t, exponential_model(t, *popt1),
+             label=f'$\tau_b$ : {popt1[0]} $\pm$ {pcov1[0]}$\mu$s',
+             color='gray', linestyle=ls, alpha=0.8)
+
+    plt.legend()
     plt.ylim(0, 1)
     plt.ylabel('Intensity ratio')
     plt.xlabel(r'$T_{read}$ ($\mu$s)')

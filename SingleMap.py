@@ -289,8 +289,12 @@ class SingleMap:
             for region in self.regions:
                 region_flatten = region.flatten()
                 region_mean = np.nanmean(region_flatten) / np.nanmean(blockade_flatten)
+                uncertainty = np.sqrt(region_mean ** 2 * (
+                        (np.nanstd(region_flatten) / np.nanmean(region_flatten)) ** 2 +
+                        (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
+                ))
                 ratios.append(region_mean)
-                uncertainties.append(np.std(region) / np.mean(region))
+                uncertainties.append(uncertainty)
             return ratios, uncertainties
 
     def plot_map(self):
