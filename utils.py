@@ -21,7 +21,7 @@ def linear_model(x, m, b):
     return m*x + b
 
 def exponential_model(t, tau, A, B):
-    return A * np.exp(-t / tau) + B
+    return A * np.exp(-t/tau) + B
 
 # Differentiation function to remove linear background
 def differentiate_2d(Z, dx, axis=0):

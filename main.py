@@ -895,7 +895,6 @@ def both_dir_400mT():
     # Blockade
     ###########
     print('###################### Blockade #########################')
-    ratios = []
     for map in all_maps_blockade[1:]:
         print(map[3])
         map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], 1, 1, file_dir)
@@ -1009,16 +1008,16 @@ def both_dir_400mT():
         map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], -1, 2, file_dir)
         single_maps_transport.append(map_obj)
 
-    single_maps_transport[0].set_comp_fac(0.004)
-    single_maps_transport[1].set_comp_fac(0.006)
-    single_maps_transport[2].set_comp_fac(0.007)
-    single_maps_transport[3].set_comp_fac(0.008)
-    single_maps_transport[4].set_comp_fac(0.009)
-    single_maps_transport[5].set_comp_fac(0.0093)
-    single_maps_transport[6].set_comp_fac(0.0095)
-    single_maps_transport[7].set_comp_fac(0.01)
-    single_maps_transport[8].set_comp_fac(0.01)
-    single_maps_transport[9].set_comp_fac(0.01)
+    #single_maps_transport[0].set_comp_fac(0.004)
+    #single_maps_transport[1].set_comp_fac(0.006)
+    #single_maps_transport[2].set_comp_fac(0.007)
+    #single_maps_transport[3].set_comp_fac(0.008)
+    #single_maps_transport[4].set_comp_fac(0.009)
+    #single_maps_transport[5].set_comp_fac(0.0093)
+    #single_maps_transport[6].set_comp_fac(0.0095)
+    #single_maps_transport[7].set_comp_fac(0.01)
+    #single_maps_transport[8].set_comp_fac(0.01)
+    #single_maps_transport[9].set_comp_fac(0.01)
 
     for map_obj in single_maps_transport:
         map_obj.subtract_background()
@@ -1191,9 +1190,10 @@ def both_dir_400mT():
 
     t = np.linspace(0, max(t_read_s), 100)
     #print(popt, "\n", pcov)
+    sigma = np.sqrt(np.diag(pcov[0]))
 
     plt.plot(t, exponential_model(t, *popt),
-             label=f'$\tau_b$ : {popt[0]} $\pm$ {pcov[0]}$\mu$s',
+             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
              color='mediumblue', linestyle=ls, alpha=0.8)
     plt.legend()
     plt.ylabel('Intensity ratio')
@@ -1225,8 +1225,10 @@ def both_dir_400mT():
                            sigma=ratios_err_transport[9:, 0],
                            p0=[1, 0.5, 0.5])
 
-    plt.plot(t, exponential_model(t, *popt),
-             label=f'$\tau_b$ : {popt[0]} $\pm$ {pcov[0]}$\mu$s',
+    sigma = np.sqrt(np.diag(pcov))
+
+    plt.plot(t, (exponential_model(t, *popt) - popt[2]) / popt[1],
+             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
              color='mediumblue', linestyle=ls, alpha=0.8)
 
     popt1, pcov1 = curve_fit(exponential_model,
@@ -1235,9 +1237,35 @@ def both_dir_400mT():
                            sigma=ratios_err_transport[9:, 1],
                            p0=[1, 0.5, 0.5])
 
-    plt.plot(t, exponential_model(t, *popt1),
-             label=f'$\tau_b$ : {popt1[0]} $\pm$ {pcov1[0]}$\mu$s',
+    sigma1 = np.sqrt(np.diag(pcov1))
+
+    plt.plot(t, (exponential_model(t, *popt1) - popt1[2]) / popt1[1],
+             label=rf'$\tau_b$ : {popt1[0]} $\pm$ {sigma1}$\mu$s',
              color='gray', linestyle=ls, alpha=0.8)
+
+    popt2, pcov2 = curve_fit(exponential_model,
+                           ydata=ratios_transport[:9, 0],
+                           xdata=t_read_s[:9],
+                           sigma=ratios_err_transport[:9, 0],
+                           p0=[1, 0.5, 0.5])
+
+    sigma2 = np.sqrt(np.diag(pcov2))
+
+    plt.plot(t, (exponential_model(t, *popt2) - popt2[2]) / popt2[1],
+             label=rf'$\tau_b$ : {popt2[0]} $\pm$ {sigma2}$\mu$s',
+             color='darkcyan', linestyle=ls, alpha=0.8)
+
+    popt3, pcov3 = curve_fit(exponential_model,
+                             ydata=ratios_transport[:9, 1],
+                             xdata=t_read_s[:9],
+                             sigma=ratios_err_transport[:9, 1],
+                             p0=[1, 0.5, 0.5])
+
+    sigma3 = np.sqrt(np.diag(pcov3))
+
+    plt.plot(t, (exponential_model(t, *popt3) - popt3[2]) / popt3[1],
+             label=rf'$\tau_b$ : {popt3[0]} $\pm$ {sigma3}$\mu$s',
+             color='lavender', linestyle=ls, alpha=0.8)
 
     plt.legend()
     plt.ylim(0, 1)
@@ -1246,6 +1274,310 @@ def both_dir_400mT():
     plt.tight_layout()
     plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
 
+
+def both_dir_0T():
+    # Get the current working directory
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "0T_both_dir")
+    file_names = find_hdf5_files(file_dir)
+
+    group = "Data"
+    dataset = "Data/Data"
+    channels = "Data/Channel names"
+
+    ratios_transport = []
+    ratios_err_transport = []
+    ratios_blockade = []
+    ratios_err_blockade = []
+    all_maps_blockade = []
+    all_maps_transport = []
+    single_maps_blockade = []
+    single_maps_transport = []
+
+    for file in file_names:
+        # Load the data in the given file
+        if 'transport' in file:
+            all_maps_transport = load_data_wo_dir(file, group, dataset, channels, all_maps_transport)
+        elif 'blockade' in file:
+            all_maps_blockade = load_data_wo_dir(file, group, dataset, channels, all_maps_blockade)
+
+    ###########
+    # Blockade
+    ###########
+    print('###################### Blockade #########################')
+    for map in all_maps_blockade[1:]:
+        print(map[3])
+        map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], 1, 1, file_dir)
+        map_obj.subtract_background()
+        map_obj.detect_lines()
+        single_maps_blockade.append(map_obj)
+
+    # 1857
+    single_maps_blockade[0].move_horizontal_line(0, -0.85, 5.2795)
+    single_maps_blockade[0].move_horizontal_line(1, -0.85, 5.2871)
+    single_maps_blockade[0].move_vertical_line(1, -10.0, 5.18384)
+
+    # 2535
+    single_maps_blockade[1].move_horizontal_line(0, -0.85, 5.28)
+    single_maps_blockade[1].move_horizontal_line(1, -0.85, 5.2874)
+    single_maps_blockade[1].move_vertical_line(1, -10.0, 5.18366)
+
+    # 3214
+    single_maps_blockade[2].move_horizontal_line(0, -0.85, 5.2802)
+    single_maps_blockade[2].move_horizontal_line(1, -0.85, 5.2876)
+    single_maps_blockade[2].move_vertical_line(1, -10.0, 5.18347)
+
+    # 3892
+    single_maps_blockade[3].move_horizontal_line(0, -0.85, 5.2805)
+    single_maps_blockade[3].move_horizontal_line(1, -0.85, 5.2879)
+    single_maps_blockade[3].move_vertical_line(1, -10.0, 5.18334)
+
+    # 4571
+    single_maps_blockade[4].move_horizontal_line(0, -0.85, 5.2808)
+    single_maps_blockade[4].move_horizontal_line(1, -0.85, 5.2879)
+    single_maps_blockade[4].move_vertical_line(1, -10.0, 5.18332)
+
+    # 5250
+    single_maps_blockade[5].move_horizontal_line(0, -0.85, 5.2809)
+    single_maps_blockade[5].move_horizontal_line(1, -0.85, 5.2877)
+    single_maps_blockade[5].move_vertical_line(1, -10.0, 5.18303)
+
+    # 5928
+    single_maps_blockade[6].move_horizontal_line(0, -0.85, 5.281)
+    single_maps_blockade[6].move_horizontal_line(1, -0.85, 5.2876)
+    single_maps_blockade[6].move_vertical_line(1, -10.0, 5.1831)
+
+    # 6607
+    single_maps_blockade[7].move_horizontal_line(0, -0.85, 5.2806)
+    single_maps_blockade[7].move_horizontal_line(1, -0.85, 5.2878)
+    single_maps_blockade[7].move_vertical_line(1, -10.0, 5.18305)
+
+    # 7285
+    single_maps_blockade[8].move_horizontal_line(0, -0.85, 5.2807)
+    single_maps_blockade[8].move_horizontal_line(1, -0.85, 5.2879)
+    single_maps_blockade[8].move_vertical_line(1, -10.0, 5.18301)
+
+    # 7964
+    single_maps_blockade[9].move_horizontal_line(0, -0.85, 5.2807)
+    single_maps_blockade[9].move_horizontal_line(1, -0.85, 5.2879)
+    single_maps_blockade[9].move_vertical_line(1, -10.0, 5.18296)
+
+    # 8642
+    single_maps_blockade[10].move_horizontal_line(0, -0.85, 5.28076)
+    single_maps_blockade[10].move_horizontal_line(1, -0.85, 5.28796)
+    single_maps_blockade[10].move_vertical_line(1, -10.0, 5.1833)
+
+    # 9321
+    single_maps_blockade[11].move_horizontal_line(0, -0.85, 5.28055)
+    single_maps_blockade[11].move_horizontal_line(1, -0.85, 5.28776)
+    single_maps_blockade[11].move_vertical_line(1, -10.0, 5.183)
+
+    # 10000
+    single_maps_blockade[12].move_horizontal_line(0, -0.85, 5.2801)
+    single_maps_blockade[12].move_horizontal_line(1, -0.85, 5.28781)
+    single_maps_blockade[12].move_vertical_line(1, -10.0, 5.18303)
+
+    # 500
+    single_maps_blockade[13].move_horizontal_line(1, -0.85, 5.286)
+    single_maps_blockade[13].move_horizontal_line(0, -0.85, 5.2775)
+    #single_maps_blockade[13].move_vertical_line(1, -10.0, 5.18303)
+
+    # 1250
+    single_maps_blockade[14].move_horizontal_line(1, -0.85, 5.2872)
+    single_maps_blockade[14].move_horizontal_line(0, -0.85, 5.279)
+
+    # 2000
+    single_maps_blockade[15].move_horizontal_line(1, -0.85, 5.2873)
+    single_maps_blockade[15].move_horizontal_line(0, -0.85, 5.2795)
+    single_maps_blockade[15].move_vertical_line(1, -10.0, 5.1837)
+
+
+    for map_obj in single_maps_blockade:
+        #print(map_obj.get_vertical_lines())
+        map_obj.add_triangle()
+        map_obj.plot_map()
+        ratio, sigma_ratio = map_obj.get_ratio()
+        ratios_blockade.append(ratio)
+        ratios_err_blockade.append(sigma_ratio)
+
+    #############
+    # Transport
+    #############
+    print('###################### Transport #########################')
+    all_maps_transport = all_maps_transport[:10]+all_maps_transport[11:]
+    for map in all_maps_transport:
+        print(map[3])
+        map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], -1, 3, file_dir)
+        map_obj.subtract_background()
+        map_obj.detect_lines()
+        single_maps_transport.append(map_obj)
+
+    # 100
+    single_maps_transport[0].move_horizontal_line(0, -0.85, 5.2934)
+    single_maps_transport[0].move_horizontal_line(1, -0.85, 5.302)
+    single_maps_transport[0].move_vertical_line(1, -10, 5.179)
+
+    # 130
+    single_maps_transport[1].move_horizontal_line(0, -0.85, 5.2929)
+    single_maps_transport[1].move_horizontal_line(1, -0.85, 5.3015)
+    single_maps_transport[1].move_vertical_line(1, -10, 5.1792)
+
+    # 160
+    single_maps_transport[2].move_horizontal_line(0, -0.85, 5.2923)
+    single_maps_transport[2].move_horizontal_line(1, -0.85, 5.301)
+    single_maps_transport[2].move_vertical_line(1, -10, 5.1796)
+
+    # 190
+    single_maps_transport[3].move_horizontal_line(0, -0.85, 5.292)
+    single_maps_transport[3].move_horizontal_line(1, -0.85, 5.3005)
+    single_maps_transport[3].move_vertical_line(1, -10, 5.17975)
+
+    # 220
+    single_maps_transport[4].move_horizontal_line(0, -0.85, 5.2915)
+    single_maps_transport[4].move_horizontal_line(1, -0.85, 5.3)
+    single_maps_transport[4].move_vertical_line(1, -10, 5.1797)
+
+    # 250
+    single_maps_transport[5].move_horizontal_line(0, -0.85, 5.2908)
+    single_maps_transport[5].move_horizontal_line(1, -0.85, 5.2996)
+    single_maps_transport[5].move_vertical_line(1, -10, 5.18)
+
+    # 280
+    single_maps_transport[6].move_horizontal_line(0, -0.85, 5.29104)
+    single_maps_transport[6].move_horizontal_line(1, -0.85, 5.2995)
+    single_maps_transport[6].move_vertical_line(1, -10, 5.1802)
+
+    # 310
+    single_maps_transport[7].move_horizontal_line(0, -0.85, 5.2911)
+    single_maps_transport[7].move_horizontal_line(1, -0.85, 5.2994)
+    single_maps_transport[7].move_vertical_line(1, -10, 5.1803)
+
+    # 340
+    single_maps_transport[8].move_horizontal_line(0, -0.85, 5.2909)
+    single_maps_transport[8].move_horizontal_line(1, -0.85, 5.299)
+    single_maps_transport[8].move_vertical_line(1, -10, 5.18042)
+
+    # 370
+    single_maps_transport[9].move_horizontal_line(0, -0.85, 5.2903)
+    single_maps_transport[9].move_horizontal_line(1, -0.85, 5.2987)
+    single_maps_transport[9].move_vertical_line(1, -10, 5.1805)
+
+    # 400
+    single_maps_transport[10].move_horizontal_line(0, -0.85, 5.29)
+    single_maps_transport[10].move_horizontal_line(1, -0.85, 5.2985)
+    single_maps_transport[10].move_vertical_line(1, -10, 5.1805)
+
+    # 500
+    single_maps_transport[11].move_horizontal_line(0, -0.85, 5.2895)
+    single_maps_transport[11].move_horizontal_line(1, -0.85, 5.2978)
+    single_maps_transport[11].move_vertical_line(1, -10, 5.1807)
+
+    # 600
+    single_maps_transport[12].move_horizontal_line(0, -0.85, 5.2893)
+    single_maps_transport[12].move_horizontal_line(1, -0.85, 5.298)
+    single_maps_transport[12].move_vertical_line(1, -10, 5.1812)
+
+    # 700
+    single_maps_transport[13].move_horizontal_line(0, -0.85, 5.2891)
+    single_maps_transport[13].move_horizontal_line(1, -0.85, 5.2975)
+    single_maps_transport[13].move_vertical_line(1, -10, 5.1813)
+
+    # 800
+    single_maps_transport[14].move_horizontal_line(0, -0.85, 5.2889)
+    single_maps_transport[14].move_horizontal_line(1, -0.85, 5.2971)
+    single_maps_transport[14].move_vertical_line(1, -10, 5.1813)
+
+    # 900
+    single_maps_transport[15].move_horizontal_line(0, -0.85, 5.2886)
+    single_maps_transport[15].move_horizontal_line(1, -0.85, 5.297)
+    single_maps_transport[15].move_vertical_line(0, -10, 5.1768)
+    single_maps_transport[15].move_vertical_line(1, -10, 5.1815)
+
+    # 1000
+    single_maps_transport[16].move_horizontal_line(0, -0.85, 5.2886)
+    single_maps_transport[16].move_horizontal_line(1, -0.85, 5.2968)
+    single_maps_transport[16].move_vertical_line(1, -10, 5.1816)
+
+    for map_obj in single_maps_transport:
+        map_obj.add_triangle()
+        map_obj.add_region(-0.005)
+        map_obj.plot_map()
+        ratio_transport, ratio_err_transport = map_obj.get_ratio()
+        ratios_transport.append(ratio_transport)
+        ratios_err_transport.append(ratio_err_transport)
+
+    ########################
+    # Plotting and fitting
+    ########################
+
+    # Blockade
+    plt.figure(figsize=(20, 12))
+    ls = 'dashed'
+    t_read_s = []
+    for elem in all_maps_blockade[1:]:
+        t_read_s.append(elem[3])
+    t_read_s = np.array(t_read_s) * 125 * 1e-6
+    print(t_read_s)
+    plt.scatter(t_read_s, ratios_blockade,
+                facecolors='none', edgecolors='orangered')
+    # plt.errorbar(t_read_s, ratios_blockade,
+    #             ratios_err_blockade,
+    #             linestyle='None', marker='.',
+    #             color='mediumvioletred', elinewidth=0.5)
+
+    popt, pcov = curve_fit(exponential_model,
+                           ydata=ratios_blockade,
+                           xdata=t_read_s,
+                           sigma=ratios_err_blockade,
+                           p0=[1, 0.5, 0.5])
+
+    # popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
+
+    t = np.linspace(0, max(t_read_s), 100)
+    # print(popt, "\n", pcov)
+    sigma = np.sqrt(np.diag(pcov)[0])
+
+    plt.plot(t, exponential_model(t, *popt),
+             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
+             color='mediumblue', linestyle=ls, alpha=0.8)
+    plt.legend()
+    plt.ylabel('Intensity ratio')
+    plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    plt.tight_layout()
+    plt.savefig(os.path.join(file_dir, f'exp_fit_blockade.png'))
+
+    # Transport
+
+    plt.figure(figsize=(20, 12))
+    ls = 'dashed'
+    t_read_s = []
+    for elem in all_maps_transport:
+        t_read_s.append(elem[3])
+    t_read_s = np.array(t_read_s) * 125 * 1e-6
+    print(t_read_s)
+    ratios_transport = np.array(ratios_transport)
+    ratios_err_transport = np.array(ratios_err_transport)
+    plt.scatter(t_read_s, ratios_transport,
+                facecolors='none', edgecolors='orangered')
+
+    popt, pcov = curve_fit(exponential_model,
+                           ydata=ratios_transport,
+                           xdata=t_read_s,
+                           sigma=ratios_err_transport,
+                           p0=[1, 0.5, 0.5])
+
+    t = np.linspace(0, max(t_read_s), 100)
+    sigma = np.sqrt(np.diag(pcov)[0])
+
+    plt.plot(t, exponential_model(t, *popt),
+             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
+             color='mediumblue', linestyle=ls, alpha=0.8)
+    plt.legend()
+    plt.ylim(0, 1)
+    plt.ylabel('Intensity ratio')
+    plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    plt.tight_layout()
+    plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
 
 
 def delta_x(tread, tini, comp_fac):
@@ -1263,7 +1595,8 @@ def main():
     #regime_ti_larger_tl_450mT()
     # regime_ti_larger_tl_200mT()
     #both_dir_500mT()
-    both_dir_400mT()
+    #both_dir_400mT()
+    both_dir_0T()
 
 if __name__ == "__main__":
     main()

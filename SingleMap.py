@@ -239,19 +239,36 @@ class SingleMap:
             print("Offset line does not properly intersect the triangle.")
             return
 
-        # Create region between the last region boundary and offset line
-        region = np.zeros_like(self.map, dtype=float)
-        for i, x in enumerate(self.FG14):
-            for j, y in enumerate(self.FG12):
-                if is_point_in_polygon(x, y, triangle):
-                    y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
-                    if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
-                        region[j, i] = 1.0
+        parallelogram = [p1, p2, intersections[0], intersections[1]]
 
-        # Update regions and map
-        self.region_boundaries.append(intersections)
-        self.regions.append(self.map * region)
-        self.regions[-1][self.regions[-1] == 0] = np.nan
+        if self.mode == 2:
+            # Create region between the last region boundary and offset line
+            region = np.zeros_like(self.map, dtype=float)
+            for i, x in enumerate(self.FG14):
+                for j, y in enumerate(self.FG12):
+                    if is_point_in_polygon(x, y, parallelogram):
+                        y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
+                        if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
+                            region[j, i] = 1.0
+
+            # Update regions and map
+            self.region_boundaries.append(intersections)
+            self.regions.append(self.map * region)
+            self.regions[-1][self.regions[-1] == 0] = np.nan
+        elif self.mode == 3:
+            region = np.zeros_like(self.map, dtype=float)
+            for i, x in enumerate(self.FG14):
+                for j, y in enumerate(self.FG12):
+                    if is_point_in_polygon(x, y, triangle):
+                        y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
+                        if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
+                            region[j, i] = 1.0
+
+            # Update regions and map
+            self.region_boundaries.append(intersections)
+            self.transport_triangle = np.array(self.map * region)
+            self.transport_triangle[self.transport_triangle == 0] = np.nan
+
 
     def get_ratio(self):
         """
@@ -261,7 +278,7 @@ class SingleMap:
             tuple: Depending on the mode, returns different ratio and uncertainty values.
         """
         blockade_flatten = self.blockade_triangle.flatten()
-        if self.mode == 1:
+        if self.mode == 1 or self.mode == 3:
             transport_flatten = self.transport_triangle.flatten()
             print(f'Read-out time: {self.tread}')
             print('Blockade: ', np.round(np.nanmean(blockade_flatten), 3), " +- ",
@@ -283,7 +300,7 @@ class SingleMap:
                 ))
                 return ratio, uncertainty
 
-        elif self.mode in [2, 3]:
+        elif self.mode == 2:
             ratios = []
             uncertainties = []
             for region in self.regions:
@@ -328,8 +345,9 @@ class SingleMap:
         if self.transport_vertices:
             vertices = np.array(self.transport_vertices)
             ax.scatter(vertices[:, 0], vertices[:, 1], color="red", label="Transport Vertices")  # Plot vertices
+            ax.plot(vertices[:2, 0], vertices[:2, 1], "r--", label="Diagonal")
 
-        if self.regions:
+        if self.region_boundaries:
             for region in self.region_boundaries:
                 vertices = np.array(region)  # Assuming regions store vertices as lists of (x, y)
                 ax.plot(vertices[:, 0], vertices[:, 1], "r--", label="Region Boundary")  # Plot region boundaries
@@ -578,8 +596,9 @@ class SingleMap:
             return
         elif index >= len(self.horizontal_lines):
             self.horizontal_lines.append((np.float64(new_slope), np.float64(new_intercept)))
+        else:
+            self.horizontal_lines[index] = (np.float64(new_slope), np.float64(new_intercept))
         old_line = self.horizontal_lines[index]
-        self.horizontal_lines[index] = (np.float64(new_slope), np.float64(new_intercept))
         print(
             f"Moved horizontal line {index} from y = {old_line[0]}x + {old_line[1]} to y = {new_slope}x + {new_intercept}")
 
