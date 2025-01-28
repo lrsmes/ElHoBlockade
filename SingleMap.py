@@ -13,6 +13,7 @@ from skimage.filters import threshold_otsu
 from skimage.graph import rag_mean_color
 from skimage.segmentation import slic, mark_boundaries
 from skimage.color import label2rgb, rgb2gray
+from Data_analysis_and_transforms import correct_median_diff
 
 
 class SingleMap:
@@ -661,6 +662,9 @@ class SingleMap:
         #for i, col in enumerate(self.FG14):
         #    self.map[:, i] -= self.comp_fac * col
         #   self.map[:, i] = detrend(self.map[:, i])
+
+        # Subtract median difference between consecutive rows
+        self.map = correct_median_diff(self.map.T).T
 
         # Compute the derivative along FG14 (axis=1, as FG14 varies along columns)
         map_derivative = np.gradient(self.map, axis=1)*10**4  # Derivative along FG14
