@@ -174,11 +174,12 @@ class SingleMap:
             print("Insufficient transport vertices to define a triangle.")
             return
         if self.region_boundaries:
-            triangle = [*self.region_boundaries[-1], self.transport_vertices[2]]
+            #triangle = [*self.region_boundaries[-1], self.transport_vertices[2]]
             p1, p2 = self.region_boundaries[-1][0], self.region_boundaries[-1][1]
         else:
-            triangle = self.transport_vertices  # Assume the first three vertices form the triangle
             p1, p2 = self.transport_vertices[0], self.transport_vertices[1]
+
+        triangle = self.transport_vertices  # Assume the first three vertices form the triangle
 
         # Define the main line equation (slope and intercept)
         if (p2[0] - p1[0]) != 0:
@@ -241,6 +242,8 @@ class SingleMap:
             return
 
         parallelogram = [p1, p2, intersections[0], intersections[1]]
+        smaller_triangle = [p1, p2, self.transport_vertices[2]]
+        #parallelogram = sorted(parallelogram, key=lambda p: (p[0], p[1]))
 
         if self.mode == 2:
             # Create region between the last region boundary and offset line
@@ -256,11 +259,12 @@ class SingleMap:
             self.region_boundaries.append(intersections)
             self.regions.append(self.map * region)
             self.regions[-1][self.regions[-1] == 0] = np.nan
+
         elif self.mode == 3:
             region = np.zeros_like(self.map, dtype=float)
             for i, x in enumerate(self.FG14):
                 for j, y in enumerate(self.FG12):
-                    if is_point_in_polygon(x, y, triangle):
+                    if is_point_in_polygon(x, y, smaller_triangle):
                         y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
                         if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
                             region[j, i] = 1.0
