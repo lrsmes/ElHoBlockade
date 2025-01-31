@@ -280,8 +280,8 @@ def linecut_500mT():
     for y in map.T[:20]:
         plt.plot(FG14[0][55:-10], y, c='red', alpha=0.3)
     """
-
-    plt.show()
+    plt.tight_layout()
+    plt.savefig(os.path.join(file_dir, f'linecut.svg'))
 
     return popt_lower, np.sqrt(np.diag(pcov_lower))
 
