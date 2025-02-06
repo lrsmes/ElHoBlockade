@@ -93,10 +93,11 @@ def main(coloring="band"):
     plt.xlabel('B-field (T)')
     plt.ylabel('Energy (meV)')
     #plt.legend(loc='upper right')
-    plt.show()
+    #plt.show()
+    plt.savefig(os.path.join(file_dir, r'el_ho_500mT.svg'))
 
     plt.figure()
-    """
+
     for idx, dif in enumerate(diff):
         plt.scatter(bfields[idx], dif[0, 0], s=1.0, label=f'GS-GS')
         plt.scatter([bfields[idx]] * 2, [dif[1, 0], dif[0, 1]], s=1.0, label=f'$\nu$')
@@ -105,7 +106,7 @@ def main(coloring="band"):
         plt.scatter([bfields[idx]] * 4, [dif[3, 0], dif[0, 3], dif[2, 1], dif[1, 2]], s=1.0, label=f'$\gamma$')
         plt.scatter([bfields[idx]] * 3, [dif[1, 1], dif[2, 2], dif[3, 3]], s=1.0, label=f'Spin-Valley')
         plt.scatter([bfields[idx]] * 2, [dif[3, 2], dif[2, 3]], s=1.0, label=f'Valley')
-    """
+
     y_gs_gs = diff[:, 0, 0]  # GS-GS
     y_nu = np.vstack([diff[:, 1, 0], diff[:, 0, 1]]).T  # ν
     y_alpha = np.vstack([diff[:, 2, 0], diff[:, 0, 2]]).T  # α

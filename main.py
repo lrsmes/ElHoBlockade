@@ -1177,6 +1177,9 @@ def both_dir_400mT():
     #             ratios_err_blockade,
     #             linestyle='None', marker='.',
     #             color='mediumvioletred', elinewidth=0.5)
+    np.save(os.path.join(file_dir, 'tread_blockade.npy'), t_read_s)
+    np.save(os.path.join(file_dir, 'ratios_blockade.npy'), ratios_blockade)
+    np.save(os.path.join(file_dir, 'ratios_err_blockade.npy'), ratios_err_blockade)
 
 
     popt, pcov = curve_fit(exponential_model,
@@ -1212,6 +1215,11 @@ def both_dir_400mT():
     ratios_transport = np.array(ratios_transport)
     ratios_err_transport = np.array(ratios_err_transport)
     print(ratios_transport[:, 0])
+
+    np.save(os.path.join(file_dir, 'tread_transport.npy'), t_read_s)
+    np.save(os.path.join(file_dir, 'ratios_transport.npy'), ratios_transport)
+    np.save(os.path.join(file_dir, 'ratios_err_transport.npy'), ratios_err_transport)
+
     plt.scatter(t_read_s, ratios_transport[:, 0],
                  facecolors='none', edgecolors='orangered')
 
@@ -2002,6 +2010,10 @@ def both_dir_1T():
     #             ratios_err_blockade,
     #             linestyle='None', marker='.',
     #             color='mediumvioletred', elinewidth=0.5)
+    np.save(os.path.join(file_dir, 'tread_blockade.npy'), t_read_s)
+    np.save(os.path.join(file_dir,'ratios_blockade.npy'), ratios_blockade)
+    np.save(os.path.join(file_dir,'ratios_err_blockade.npy'), ratios_err_blockade)
+
 
     popt, pcov = curve_fit(exponential_model,
                            ydata=ratios_blockade[4:],
@@ -2086,6 +2098,10 @@ def both_dir_1T():
     ratios_transport = np.array(ratios_transport)
     ratios_err_transport = np.array(ratios_err_transport)
     print(ratios_transport[:, 1])
+
+    np.save(os.path.join(file_dir, 'tread_transport.npy'), t_read_s)
+    np.save(os.path.join(file_dir, 'ratios_transport.npy'), ratios_transport)
+    np.save(os.path.join(file_dir, 'ratios_err_transport.npy'), ratios_err_transport)
     
     popt1, pcov1 = curve_fit(exponential_model,
                              ydata=ratios_transport[:, 1],
@@ -2126,8 +2142,8 @@ def main():
     #regime_ti_larger_tl_200mT()
     #both_dir_500mT()
     #both_dir_400mT()
-    both_dir_0T()
-    #both_dir_1T()
+    #both_dir_0T()
+    both_dir_1T()
 
 if __name__ == "__main__":
     main()
