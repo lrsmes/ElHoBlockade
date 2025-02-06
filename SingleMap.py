@@ -14,6 +14,7 @@ from skimage.graph import rag_mean_color
 from skimage.segmentation import slic, mark_boundaries
 from skimage.color import label2rgb, rgb2gray
 from Data_analysis_and_transforms import correct_median_diff
+from scipy.stats import skewnorm
 
 
 class SingleMap:
@@ -296,6 +297,9 @@ class SingleMap:
                     (np.nanstd(transport_flatten) / np.nanmean(transport_flatten)) ** 2 +
                     (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
                 ))
+
+                self.make_histogram(transport_flatten, blockade_flatten)
+
                 return ratio, uncertainty
             elif self.pulse_dir == 1:
                 ratio = np.nanmean(transport_flatten) / np.nanmean(blockade_flatten)
@@ -303,6 +307,9 @@ class SingleMap:
                         (np.nanstd(transport_flatten) / np.nanmean(transport_flatten)) ** 2 +
                         (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
                 ))
+
+                self.make_histogram(transport_flatten, blockade_flatten)
+
                 return ratio, uncertainty
 
         elif self.mode == 2:
@@ -317,7 +324,30 @@ class SingleMap:
                 ))
                 ratios.append(region_mean)
                 uncertainties.append(uncertainty)
+
+                self.make_histogram(region_flatten, blockade_flatten)
+
             return ratios, uncertainties
+
+    def make_histogram(self, data1, data2):
+        # find parameters to fit a skewnorm to the data
+        data1 = data1[np.logical_not(np.isnan(data1))]
+        data2 = data2[np.logical_not(np.isnan(data2))]
+
+        params1 = skewnorm.fit(data1, 10, loc=0.5, scale=0.25)
+        params2 = skewnorm.fit(data2, 10, loc=0.5, scale=0.25)
+
+        fig, axs = plt.subplots(1, 2)
+        axs[0].hist(data1, bins=30, density=True)
+        axs[1].hist(data2, bins=30, density=True)
+        x = np.linspace(0, 1, 300)
+        axs[0].plot(x, skewnorm.pdf(x, *params1))
+        axs[1].plot(x, skewnorm.pdf(x, *params2))
+        axs[0].set_title('Transport')
+        axs[1].set_title('Blockade')
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_hist.png'))
+        plt.close()
 
     def plot_map(self):
         """
