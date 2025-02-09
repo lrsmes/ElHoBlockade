@@ -1653,7 +1653,7 @@ def both_dir_1T():
 
     # 6425
     single_maps_blockade[2].move_horizontal_line(0, -0.85, 5.2628)
-    single_maps_blockade[2].move_horizontal_line(1, -0.85, 5.2708)
+    single_maps_blockade[2].move_horizontal_line(1, -0.85, 5.2707)
     single_maps_blockade[2].move_vertical_line(0, -11, 5.1726)
     single_maps_blockade[2].move_vertical_line(1, -11, 5.1773)
 
@@ -1661,17 +1661,23 @@ def both_dir_1T():
     single_maps_blockade[3].move_horizontal_line(0, -0.85, 5.2631)
     single_maps_blockade[3].move_horizontal_line(1, -0.85, 5.271)
     single_maps_blockade[3].move_vertical_line(0, -11, 5.17245)
-    single_maps_blockade[3].move_vertical_line(1, -11, 5.17715)
+    single_maps_blockade[3].move_vertical_line(1, -11, 5.1771)
 
     # 10375
     single_maps_blockade[4].move_horizontal_line(0, -0.85, 5.2629)
     single_maps_blockade[4].move_horizontal_line(1, -0.85, 5.2709)
-    #single_maps_blockade[4].move_vertical_line(0, -11, 5.17245)
+    single_maps_blockade[4].move_vertical_line(0, -11, 5.17245)
     single_maps_blockade[4].move_vertical_line(1, -11, 5.177)
+
+    # 12350
+    single_maps_blockade[5].move_horizontal_line(0, -0.85, 5.2629)
+    single_maps_blockade[5].move_horizontal_line(1, -0.85, 5.2709)
+    single_maps_blockade[5].move_vertical_line(0, -11, 5.17245)
+    single_maps_blockade[5].move_vertical_line(1, -11, 5.177)
 
     # 14325
     single_maps_blockade[6].move_horizontal_line(0, -0.85, 5.2623)
-    single_maps_blockade[6].move_horizontal_line(1, -0.85, 5.2704)
+    single_maps_blockade[6].move_horizontal_line(1, -0.85, 5.2705)
     single_maps_blockade[6].move_vertical_line(0, -11, 5.1723)
     single_maps_blockade[6].move_vertical_line(1, -11, 5.177)
 
@@ -1701,20 +1707,26 @@ def both_dir_1T():
 
     # 26175
     single_maps_blockade[12].move_horizontal_line(0, -0.85, 5.263)
-    single_maps_blockade[12].move_horizontal_line(1, -0.85, 5.271)
-    single_maps_blockade[12].move_vertical_line(0, -11, 5.1724)
+    single_maps_blockade[12].move_horizontal_line(1, -0.85, 5.2708)
+    single_maps_blockade[12].move_vertical_line(0, -11, 5.1723)
     single_maps_blockade[12].move_vertical_line(1, -11, 5.17705)
 
     # 28150
     single_maps_blockade[13].move_horizontal_line(0, -0.85, 5.2629)
-    single_maps_blockade[13].move_horizontal_line(1, -0.85, 5.2714)
-    single_maps_blockade[13].move_vertical_line(0, -11, 5.1725)
+    single_maps_blockade[13].move_horizontal_line(1, -0.85, 5.2712)
+    single_maps_blockade[13].move_vertical_line(0, -11, 5.1724)
     single_maps_blockade[13].move_vertical_line(1, -11, 5.177)
+
+    # 30125
+    single_maps_blockade[14].move_horizontal_line(0, -0.85, 5.2629)
+    single_maps_blockade[14].move_horizontal_line(1, -0.85, 5.2712)
+    single_maps_blockade[14].move_vertical_line(0, -11, 5.1725)
+    single_maps_blockade[14].move_vertical_line(1, -11, 5.177)
 
     # 32100
     single_maps_blockade[15].move_horizontal_line(0, -0.85, 5.263)
-    single_maps_blockade[15].move_horizontal_line(1, -0.85, 5.2715)
-    single_maps_blockade[15].move_vertical_line(0, -11, 5.1725)
+    single_maps_blockade[15].move_horizontal_line(1, -0.85, 5.2713)
+    single_maps_blockade[15].move_vertical_line(0, -11, 5.1724)
     single_maps_blockade[15].move_vertical_line(1, -11, 5.1769)
 
     # 34075
@@ -1726,13 +1738,13 @@ def both_dir_1T():
     # 36050
     single_maps_blockade[17].move_horizontal_line(0, -0.85, 5.2631)
     single_maps_blockade[17].move_horizontal_line(1, -0.85, 5.2713)
-    #single_maps_blockade[13].move_vertical_line(0, -11, 5.1726)
-    #single_maps_blockade[13].move_vertical_line(1, -11, 5.177)
+    single_maps_blockade[17].move_vertical_line(0, -11, 5.1722)
+    single_maps_blockade[17].move_vertical_line(1, -11, 5.177)
 
     # 38025
     single_maps_blockade[18].move_horizontal_line(0, -0.85, 5.2631)
-    single_maps_blockade[18].move_horizontal_line(1, -0.85, 5.2713)
-    single_maps_blockade[18].move_vertical_line(0, -11, 5.1725)
+    single_maps_blockade[18].move_horizontal_line(1, -0.85, 5.2711)
+    single_maps_blockade[18].move_vertical_line(0, -11, 5.1724)
     single_maps_blockade[18].move_vertical_line(1, -11, 5.1769)
 
     # 40000
@@ -1762,22 +1774,22 @@ def both_dir_1T():
         map_obj.detect_lines()
 
     # 2475
-    single_maps_transport[0].move_horizontal_line(0, -0.85, 5.2642)
+    single_maps_transport[0].move_horizontal_line(0, -0.85, 5.2641)
     single_maps_transport[0].move_horizontal_line(1, -0.85, 5.2714)
     single_maps_transport[0].move_vertical_line(0, -11, 5.1716)
-    single_maps_transport[0].move_vertical_line(1, -11, 5.1759)
+    single_maps_transport[0].move_vertical_line(1, -11, 5.1758)
 
     # 4450
     single_maps_transport[1].move_horizontal_line(0, -0.85, 5.2638)
     single_maps_transport[1].move_horizontal_line(1, -0.85, 5.2712)
     single_maps_transport[1].move_vertical_line(0, -11, 5.1719)
-    single_maps_transport[1].move_vertical_line(1, -11, 5.1761)
+    single_maps_transport[1].move_vertical_line(1, -11, 5.176)
 
     # 6425
     single_maps_transport[2].move_horizontal_line(0, -0.85, 5.2638)
     single_maps_transport[2].move_horizontal_line(1, -0.85, 5.2712)
     single_maps_transport[2].move_vertical_line(0, -11, 5.172)
-    single_maps_transport[2].move_vertical_line(1, -11, 5.1762)
+    single_maps_transport[2].move_vertical_line(1, -11, 5.1761)
 
     # 8400
     single_maps_transport[3].move_horizontal_line(0, -0.85, 5.2637)
@@ -1795,7 +1807,7 @@ def both_dir_1T():
     single_maps_transport[5].move_horizontal_line(0, -0.85, 5.2638)
     single_maps_transport[5].move_horizontal_line(1, -0.85, 5.27105)
     single_maps_transport[5].move_vertical_line(0, -11, 5.1721)
-    single_maps_transport[5].move_vertical_line(1, -11, 5.1763)
+    single_maps_transport[5].move_vertical_line(1, -11, 5.1762)
 
     # 14325
     single_maps_transport[6].move_horizontal_line(0, -0.85, 5.2637)
@@ -1819,7 +1831,7 @@ def both_dir_1T():
     single_maps_transport[9].move_horizontal_line(0, -0.85, 5.2637)
     single_maps_transport[9].move_horizontal_line(1, -0.85, 5.271)
     single_maps_transport[9].move_vertical_line(0, -11, 5.1722)
-    single_maps_transport[9].move_vertical_line(1, -11, 5.1764)
+    single_maps_transport[9].move_vertical_line(1, -11, 5.1763)
 
     # 22225
     single_maps_transport[10].move_horizontal_line(0, -0.85, 5.2636)
@@ -1849,7 +1861,7 @@ def both_dir_1T():
     single_maps_transport[14].move_horizontal_line(0, -0.85, 5.2638)
     single_maps_transport[14].move_horizontal_line(1, -0.85, 5.2711)
     single_maps_transport[14].move_vertical_line(0, -11, 5.1722)
-    single_maps_transport[14].move_vertical_line(1, -11, 5.1764)
+    single_maps_transport[14].move_vertical_line(1, -11, 5.1763)
 
     # 32100
     single_maps_transport[15].move_horizontal_line(0, -0.85, 5.2638)
@@ -1861,7 +1873,7 @@ def both_dir_1T():
     single_maps_transport[16].move_horizontal_line(0, -0.85, 5.2635)
     single_maps_transport[16].move_horizontal_line(1, -0.85, 5.271)
     single_maps_transport[16].move_vertical_line(0, -11, 5.1721)
-    single_maps_transport[16].move_vertical_line(1, -11, 5.1764)
+    single_maps_transport[16].move_vertical_line(1, -11, 5.1763)
 
     # 36050
     single_maps_transport[17].move_horizontal_line(0, -0.85, 5.2637)
@@ -1873,7 +1885,7 @@ def both_dir_1T():
     single_maps_transport[18].move_horizontal_line(0, -0.85, 5.2636)
     single_maps_transport[18].move_horizontal_line(1, -0.85, 5.2711)
     single_maps_transport[18].move_vertical_line(0, -11, 5.17215)
-    single_maps_transport[18].move_vertical_line(1, -11, 5.1764)
+    single_maps_transport[18].move_vertical_line(1, -11, 5.1763)
 
     # 40000
     single_maps_transport[19].move_horizontal_line(0, -0.85, 5.2636)

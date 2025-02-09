@@ -154,7 +154,7 @@ def main():
     gamma_1 = 0.339
     gamma_0 = 2.6
     delta = -0.000
-    energy_lim = [-0.01, 0.01]
+    energy_lim = [-0.5, 0.5]
     # SOC parameters (currently only valid for K)
     lamda_i1 = -0.5 * 10 ** -4
     lamda_i2 = -0.6 * 10 ** -4
@@ -166,7 +166,7 @@ def main():
 
     # Initialize
     n_points = 10001
-    a = 2.36 # Angstrom
+    a = 2.46 # Angstrom
     k_path = high_symmetry_path_hex(a, n_points)
 
     indices = {
@@ -179,6 +179,7 @@ def main():
     eigen_energies, eigen_vectors = calc_eigen_energies_and_vectors(k_path, a, delta, V, gamma_0, gamma_1, gamma_3,
                                                                     gamma_4, lamda_i1, lamda_i2, lamda_0, lamda_0_prime,
                                                                     lamda_4, layer_delta)
+
     np.save('eigen_energies_0.004.npy', eigen_energies)
     np.save('eigen_vec_0.004.npy', eigen_vectors)
     # Approx. Calculation of DOS (should give the right qualitative picture for low energy)
@@ -189,7 +190,8 @@ def main():
     norm = Normalize(vmin=0, vmax=np.max(np.abs(eigen_vectors) ** 2))
     cmap = plt.get_cmap('bwr')  # Colormap
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [3, 1]})
+    #fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [1, 1]})
+    fig, ax1 = plt.subplots(figsize=(8, 12))
 
     # Band structure plot
     for band_idx, band in enumerate(eigen_energies.T):
@@ -205,12 +207,13 @@ def main():
 
         print(np.max(color_values), np.min(color_values))
         colors = bwr((color_values))  # Normalize and map to colors
-        ax1.scatter(np.arange(band.size), band, color=colors, s=8)  # Use scatter for individual coloring
+        colors = ['mediumblue', 'mediumblue', 'mediumblue', 'mediumblue', 'orangered', 'orangered', 'orangered', 'orangered']
+        ax1.plot(np.arange(band.size), band, color=colors[band_idx])#, s=8)  # Use scatter for individual coloring
 
-    ax1.set_title('Band Structure of Bilayer Graphene')
-    ax1.set_xlim(3100, 3200)  # according to the most interesting range (currently centered around K)
-    ax1.axvline(3175 + 36)
-    ax1.axvline(3175 - 36)
+    #ax1.set_title('Band Structure of Bilayer Graphene')
+    ax1.set_xlim(3080, 3280)  # according to the most interesting range (currently centered around K)
+    #ax1.axvline(3175 + 36)
+    #ax1.axvline(3175 - 36)
     ax1.set_ylim(energy_lim[0] * 1000, energy_lim[1] * 1000)
     ax1.set_xlabel('')
     ax1.set_ylabel('Energy (meV)', fontsize=24)
@@ -221,24 +224,25 @@ def main():
     ax1.yaxis.set_major_locator(MaxNLocator(5))
     ax1.tick_params(axis='x', which='major', labelsize=24)
     ax1.tick_params(axis='y', which='major', labelsize=24)
+
     # Density of States plot
-    ax2.plot(dos, energy_bins, color='r')
-    ax2.set_title('Density of States')
-    ax2.set_xlabel('DOS (states/eV/unit cell)')
-    ax2.set_ylabel('Energy (eV)')
-    ax2.set_ylim(energy_lim[0], energy_lim[1])
+    # ax2.plot(dos, energy_bins, color='r')
+    # ax2.set_title('Density of States')
+    # ax2.set_xlabel('DOS (states/eV/unit cell)')
+    # ax2.set_ylabel('Energy (eV)')
+    # ax2.set_ylim(energy_lim[0], energy_lim[1])
 
     # Create the scalar mappable and colorbar
-    sm = ScalarMappable(norm=norm, cmap=cmap)
-    sm.set_array([])  # Required for ScalarMappable,<xq although not used directly
-    cbar = plt.colorbar(sm, ax=ax1)  # Add colorbar to the band structure plot
-    cbar.set_label('Color value (normalized)', fontsize=20)  # Label for the colorbar
-    cbar.ax.tick_params(labelsize=16)  # Adjust colorbar tick labels size
+    # sm = ScalarMappable(norm=norm, cmap=cmap)
+    # sm.set_array([])  # Required for ScalarMappable,<xq although not used directly
+    # cbar = plt.colorbar(sm, ax=ax1)  # Add colorbar to the band structure plot
+    # cbar.set_label('Color value (normalized)', fontsize=20)  # Label for the colorbar
+    # cbar.ax.tick_params(labelsize=16)  # Adjust colorbar tick labels size
 
     # Adjust figure size and layout
     fig.set_size_inches(7.5, 10.0)
     plt.tight_layout()
-    plt.savefig('band_plot_' + str(V) + '.pdf')
+    plt.savefig('band_plot_' + str(V) + '.svg')
     plt.show()
 
 

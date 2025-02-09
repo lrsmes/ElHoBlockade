@@ -232,13 +232,13 @@ def main(p0, path_dir='/Users/hubert.D/Documents/0T_ratios/', single=True):
         data_2 = load_data(*dp2)
         for i in range(len(data_1[1])):
 
-            x_block = data_2[0][4:20]
-            y_block = data_2[1][4:20]
-            y_err_block = data_2[2][4:20]
+            x_block = data_2[0] #[4:20]
+            y_block = data_2[1] #[4:20]
+            y_err_block = data_2[2]#[4:20]
 
             x_transport = data_1[0]#[4:20]
-            y_transport = data_1[1][i] #, 4:20]
-            y_err_transport = data_1[2][i] #, 4:20]
+            y_transport = data_1[1][i]#, 4:20]
+            y_err_transport = data_1[2][i]#, 4:20]
 
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
             plot_data(ax1, x_block, y_block, y_err_block)
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     p0_400mT = [(1.0, 0.5, 1.0, 0.5),
                 (0.5, 0.5, 0.5, 0.5),
                 (1.5, 0.4),
-                (4.0, 1.0),
+                (3.0, 2.0),
                 (0.2, 0.2)]
 
     main(p0_400mT, '/Users/larsm/PycharmProjects/ElHoBlockade/1T_both_dir/', False)

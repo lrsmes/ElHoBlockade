@@ -286,68 +286,97 @@ class SingleMap:
         blockade_flatten = self.blockade_triangle.flatten()
         if self.mode == 1 or self.mode == 3:
             transport_flatten = self.transport_triangle.flatten()
+
+            # Calculate ratio and uncertainty
+            # ratio = np.nanmean(transport_flatten) / np.nanmean(blockade_flatten)
+            # uncertainty = np.sqrt(ratio ** 2 * (
+            #         (np.nanstd(transport_flatten) / np.nanmean(transport_flatten)) ** 2 +
+            #         (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
+            # ))
+
+            mean_trans, std_trans, mean_block, std_block = self.make_histogram(transport_flatten, blockade_flatten)
+
+            ratio = mean_trans / mean_block
+            uncertainty = np.sqrt(ratio ** 2 * (
+                    (std_trans / mean_trans) ** 2 +
+                    (std_block / mean_block) ** 2
+            ))
+
             print(f'Read-out time: {self.tread}')
-            print('Blockade: ', np.round(np.nanmean(blockade_flatten), 3), " +- ",
-                  np.round(np.nanstd(blockade_flatten), 3))
-            print('Non-Blockade: ', np.round(np.nanmean(transport_flatten), 3), " +- ",
-                  np.round(np.nanstd(transport_flatten), 3))
-            if self.pulse_dir == -1:
-                ratio = np.nanmean(transport_flatten) / np.nanmean(blockade_flatten)
-                uncertainty = np.sqrt(ratio ** 2 * (
-                    (np.nanstd(transport_flatten) / np.nanmean(transport_flatten)) ** 2 +
-                    (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
-                ))
+            print('Blockade: ', np.round(mean_block, 3), " +- ",
+                  np.round(std_block, 3))
+            print('Non-Blockade: ', np.round(mean_trans, 3), " +- ",
+                  np.round(std_trans, 3))
 
-                self.make_histogram(transport_flatten, blockade_flatten)
-
-                return ratio, uncertainty
-            elif self.pulse_dir == 1:
-                ratio = np.nanmean(transport_flatten) / np.nanmean(blockade_flatten)
-                uncertainty = np.sqrt(ratio ** 2 * (
-                        (np.nanstd(transport_flatten) / np.nanmean(transport_flatten)) ** 2 +
-                        (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
-                ))
-
-                self.make_histogram(transport_flatten, blockade_flatten)
-
-                return ratio, uncertainty
+            return ratio, uncertainty
 
         elif self.mode == 2:
             ratios = []
             uncertainties = []
-            for region in self.regions:
+            for i, region in enumerate(self.regions):
                 region_flatten = region.flatten()
-                region_mean = np.nanmean(region_flatten) / np.nanmean(blockade_flatten)
-                uncertainty = np.sqrt(region_mean ** 2 * (
-                        (np.nanstd(region_flatten) / np.nanmean(region_flatten)) ** 2 +
-                        (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
+                # region_mean = np.nanmean(region_flatten) / np.nanmean(blockade_flatten)
+                # uncertainty = np.sqrt(region_mean ** 2 * (
+                #         (np.nanstd(region_flatten) / np.nanmean(region_flatten)) ** 2 +
+                #         (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
+                # ))
+                #
+                # ratios.append(region_mean)
+                # uncertainties.append(uncertainty)
+                mean_trans, std_trans, mean_block, std_block = self.make_histogram(region_flatten,
+                                                                                   blockade_flatten, reg=i)
+
+                ratio = mean_trans / mean_block
+                uncertainty = np.sqrt(ratio ** 2 * (
+                        (std_trans / mean_trans) ** 2 +
+                        (std_block / mean_block) ** 2
                 ))
-                ratios.append(region_mean)
+
+                ratios.append(ratio)
                 uncertainties.append(uncertainty)
 
-                self.make_histogram(region_flatten, blockade_flatten)
+                print(f'Read-out time: {self.tread}')
+                print('Blockade: ', np.round(mean_block, 3), " +- ",
+                      np.round(std_block, 3))
+                print('Non-Blockade: ', np.round(mean_trans, 3), " +- ",
+                      np.round(std_trans, 3))
 
             return ratios, uncertainties
 
-    def make_histogram(self, data1, data2):
+    def make_histogram(self, data_trans, data_block, reg=0):
         # find parameters to fit a skewnorm to the data
-        data1 = data1[np.logical_not(np.isnan(data1))]
-        data2 = data2[np.logical_not(np.isnan(data2))]
+        data_trans = data_trans[np.logical_not(np.isnan(data_trans))]
+        data_block = data_block[np.logical_not(np.isnan(data_block))]
 
-        params1 = skewnorm.fit(data1, 10, loc=0.5, scale=0.25)
-        params2 = skewnorm.fit(data2, 10, loc=0.5, scale=0.25)
+        shape_trans, loc_trans, scale_trans = skewnorm.fit(data_trans, 10, loc=0.5, scale=0.25)
+        shape_block, loc_block, scale_block = skewnorm.fit(data_block, 10, loc=0.5, scale=0.25)
+
+        # Compute mean and standard deviation using fitted parameters
+        mean_trans = skewnorm.mean(shape_trans, loc=loc_trans, scale=scale_trans)
+        std_trans = skewnorm.std(shape_trans, loc=loc_trans, scale=scale_trans)
+
+        mean_block = skewnorm.mean(shape_block, loc=loc_block, scale=scale_block)
+        std_block = skewnorm.std(shape_block, loc=loc_block, scale=scale_block)
+
+        # Plot histogram and fitted distribution
+        x_trans = np.linspace(min(data_trans), max(data_block), 300)
+        x_block = np.linspace(min(data_trans), max(data_block), 300)
+        pdf_trans = skewnorm.pdf(x_trans, shape_trans, loc=loc_trans, scale=scale_trans)
+        pdf_block = skewnorm.pdf(x_block, shape_block, loc=loc_block, scale=scale_block)
 
         fig, axs = plt.subplots(1, 2)
-        axs[0].hist(data1, bins=30, density=True)
-        axs[1].hist(data2, bins=30, density=True)
-        x = np.linspace(0, 1, 300)
-        axs[0].plot(x, skewnorm.pdf(x, *params1))
-        axs[1].plot(x, skewnorm.pdf(x, *params2))
+        axs[0].hist(data_trans, bins=30, density=True)
+        axs[1].hist(data_block, bins=30, density=True)
+        x = np.linspace(10, 1, 300)
+        axs[0].plot(x_trans, pdf_trans)
+        axs[1].plot(x_block, pdf_block)
         axs[0].set_title('Transport')
         axs[1].set_title('Blockade')
         plt.tight_layout()
-        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_hist.png'))
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_{reg}_hist.png'))
         plt.close()
+
+        return mean_trans, std_trans, mean_block, std_block
 
     def plot_map(self):
         """
