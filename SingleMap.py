@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import random
 import os
+import math
 from scipy.ndimage import gaussian_filter
 from scipy.signal import detrend
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
@@ -15,6 +16,8 @@ from skimage.segmentation import slic, mark_boundaries
 from skimage.color import label2rgb, rgb2gray
 from Data_analysis_and_transforms import correct_median_diff
 from scipy.stats import skewnorm
+from scipy.optimize import curve_fit
+from sklearn.mixture import GaussianMixture
 
 
 class SingleMap:
@@ -48,16 +51,82 @@ class SingleMap:
         self.blockade_triangle = None
         self.transport_mask = None
         self.transport_vertices = None
+        self.centers = None
         self.regions = []
         self.region_boundaries = []
 
-    def add_triangle(self, lines=None):
+    # def add_triangle(self, lines=None):
+    #     """
+    #     Mask the two triangles defined by the intersecting points of the electron and hole resonances.
+    #
+    #     Parameters:
+    #         lines (list of tuples): A list of four lines, each defined by slope-intercept form (m, b)
+    #                                 for the equation y = mx + b.
+    #     """
+    #     if lines:
+    #         self.lines = lines
+    #
+    #     if len(self.vertical_lines) == 2 and len(self.horizontal_lines) == 2:
+    #         # Find intersection points of the lines
+    #         intersections = [
+    #             find_intersection(self.vertical_lines[i], self.horizontal_lines[j])
+    #             for i in range(len(self.vertical_lines))
+    #             for j in range(len(self.horizontal_lines))
+    #             if find_intersection(self.vertical_lines[i], self.horizontal_lines[j])
+    #         ]
+    #
+    #         # Filter unique intersection points
+    #         intersections = list(set(intersections))
+    #
+    #         # Sort intersections to define the parallelogram
+    #         parallelogram = sorted(intersections, key=lambda p: (p[0], p[1]))
+    #
+    #         # Define the two triangles by choosing a diagonal (e.g., between points 0 and 3)
+    #         triangle1 = [parallelogram[0], parallelogram[1], parallelogram[2]]
+    #         triangle2 = [parallelogram[1], parallelogram[2], parallelogram[3]]
+    #
+    #         # Create masks for transport and blockade triangles
+    #         mask_blockade = np.zeros_like(self.map, dtype=float)
+    #         mask_transport = np.zeros_like(self.map, dtype=float)
+    #
+    #         for i, x in enumerate(self.FG14):
+    #             for j, y in enumerate(self.FG12):
+    #                 if is_point_in_polygon(x, y, triangle1):
+    #                     mask_blockade[j, i] = 1.0
+    #                 if is_point_in_polygon(x, y, triangle2):
+    #                     mask_transport[j, i] = 1.0
+    #
+    #         # Set values to NaN outside the defined regions
+    #         self.blockade_triangle = np.array(self.map * mask_blockade)
+    #         self.blockade_triangle[self.blockade_triangle == 0] = np.nan
+    #         self.transport_triangle = np.array(self.map * mask_transport)
+    #         self.transport_triangle[self.transport_triangle == 0] = np.nan
+    #         self.transport_mask = mask_transport
+    #         self.transport_vertices = triangle2
+    #     else:
+    #         # Find intersection points of the lines
+    #         intersections = [
+    #             find_intersection(self.vertical_lines[i], self.horizontal_lines[j])
+    #             for i in range(len(self.vertical_lines))
+    #             for j in range(len(self.horizontal_lines))
+    #             if find_intersection(self.vertical_lines[i], self.horizontal_lines[j])
+    #         ]
+    #
+    #         # Filter unique intersection points
+    #         intersections = list(set(intersections))
+    #         self.blockade_triangle = np.zeros_like(self.map)
+    #         self.transport_triangle = np.zeros_like(self.map)
+    #         self.transport_vertices = intersections
+
+    def add_triangle(self, lines=None, offset=0):
         """
-        Mask the two triangles defined by the intersecting points of the electron and hole resonances.
+        Mask the two triangles defined by the intersecting points of the electron and hole resonances,
+        with an optional offset to create a hexagonal blockade region.
 
         Parameters:
             lines (list of tuples): A list of four lines, each defined by slope-intercept form (m, b)
                                     for the equation y = mx + b.
+            offset (float): Distance to offset from the diagonal shared by both triangles to form a hexagonal region.
         """
         if lines:
             self.lines = lines
@@ -81,13 +150,53 @@ class SingleMap:
             triangle1 = [parallelogram[0], parallelogram[1], parallelogram[2]]
             triangle2 = [parallelogram[1], parallelogram[2], parallelogram[3]]
 
+            # Compute offset points for hexagonal cut
+            if offset > 0:
+                p1, p2 = parallelogram[1], parallelogram[2]
+                if (p2[0] - p1[0]) != 0:
+                    slope_main = (p2[1] - p1[1]) / (p2[0] - p1[0])
+                    intercept_main = p1[1] - slope_main * p1[0]
+                else:
+                    slope_main = None
+                    intercept_main = p1[0]
+
+                if slope_main is not None:
+                    slope_offset = slope_main
+                    intercept_offset = intercept_main + offset
+                    offset_line = (slope_offset, intercept_offset)
+                else:
+                    x_offset = intercept_main + offset
+                    offset_line = None
+
+                hex_blockade = [p1, p2]
+                for i in range(3):
+                    edge_start, edge_end = triangle1[i], triangle1[(i + 1) % 3]
+                    if (edge_end[0] - edge_start[0]) != 0:
+                        slope_edge = (edge_end[1] - edge_start[1]) / (edge_end[0] - edge_start[0])
+                        intercept_edge = edge_start[1] - slope_edge * edge_start[0]
+                        edge_line = (slope_edge, intercept_edge)
+                        intersection = find_intersection(offset_line, edge_line) if offset_line else None
+                    else:
+                        x_intersection = edge_start[0]
+                        y_intersection = slope_offset * x_intersection + intercept_offset if offset_line else None
+                        intersection = (x_intersection, y_intersection) if y_intersection is not None else None
+
+                    if intersection:
+                        x, y = intersection
+                        if min(edge_start[0], edge_end[0]) <= x <= max(edge_start[0], edge_end[0]) and \
+                                min(edge_start[1], edge_end[1]) <= y <= max(edge_start[1], edge_end[1]):
+                            hex_blockade.append(intersection)
+
+            else:
+                hex_blockade = triangle1
+
             # Create masks for transport and blockade triangles
             mask_blockade = np.zeros_like(self.map, dtype=float)
             mask_transport = np.zeros_like(self.map, dtype=float)
 
             for i, x in enumerate(self.FG14):
                 for j, y in enumerate(self.FG12):
-                    if is_point_in_polygon(x, y, triangle1):
+                    if is_point_in_polygon(x, y, hex_blockade):
                         mask_blockade[j, i] = 1.0
                     if is_point_in_polygon(x, y, triangle2):
                         mask_transport[j, i] = 1.0
@@ -296,11 +405,19 @@ class SingleMap:
 
             mean_trans, std_trans, mean_block, std_block = self.make_histogram(transport_flatten, blockade_flatten)
 
-            ratio = mean_trans / mean_block
-            uncertainty = np.sqrt(ratio ** 2 * (
-                    (std_trans / mean_trans) ** 2 +
-                    (std_block / mean_block) ** 2
-            ))
+            if self.pulse_dir == -1:
+                ratio = mean_trans / mean_block
+                uncertainty = np.sqrt(ratio ** 2 * (
+                        (std_trans / mean_trans) ** 2 +
+                        (std_block / mean_block) ** 2
+                ))
+            elif self.pulse_dir == 1:
+                ratio = mean_block / mean_trans
+                uncertainty = np.sqrt(ratio ** 2 * (
+                        (std_trans / mean_trans) ** 2 +
+                        (std_block / mean_block) ** 2
+                ))
+
 
             print(f'Read-out time: {self.tread}')
             print('Blockade: ', np.round(mean_block, 3), " +- ",
@@ -385,19 +502,50 @@ class SingleMap:
         Parameters:
             reg (bool): Whether to include regions in the plot.
         """
-        fig, ax = plt.subplots(figsize=(12, 8))
+        fig, ax = plt.subplots(figsize=(12, 10))
 
         # Plot the 2D map using pcolormesh
         X, Y = np.meshgrid(self.FG14, self.FG12)
-        c1 = ax.pcolormesh(X, Y, self.map, cmap="viridis_r", shading="auto", vmin=0, vmax=1)
+        c1 = ax.pcolormesh(X, Y, self.map, cmap="viridis_r", shading="auto", rasterized=True)#, vmin=0, vmax=1)
 
         # Add a colorbar to the figure
-        cbar1 = fig.colorbar(c1, ax=ax)
-        cbar1.set_label("$U_{demod.} (a.u.)$")
+        #cbar_ax = fig.add_axes([0.85, 0.75, 0.03, 0.2])
+        cbar1 = fig.colorbar(c1, ax=ax, location='top', shrink=0.3, anchor=(1.0, 0.0), aspect=15, pad=0.01)
+        cbar1.set_ticks([0, 1])
+        cbar1.ax.tick_params(direction='in', width=1, length=15, labelsize=24)
+        #cbar1.set_label("$R_{demod.} (a.u.)$", fontsize=18)
+        #cbar1.ax.xaxis.set_label_position('bottom')
+
+        ax.tick_params(axis='x', direction='in', length=8, labelsize=28, width=2)  # Move x ticks inside
+        ax.tick_params(axis='y', direction='in', length=8, labelsize=28, width=2)  # Move y ticks inside
 
         # Set y-axis limits
         ax.set_ylim(np.min(self.FG12), np.max(self.FG12))
         ax.set_xlim(np.min(self.FG14), np.max(self.FG14))
+
+        ax.set_xticks([5.18])
+        ax.set_yticks([5.28, 5.29])
+
+        ax.text(5.1825, 5.2925, r'$t_{read} =$' + r'${} \mu s$'.format(np.round(self.tread * 125 * 1e-6, 2)),
+                fontsize=32, color='black')
+
+        ax.patch.set_edgecolor('black')
+        ax.patch.set_linewidth(2)
+
+        # Set axis labels and title
+        ax.set_xlabel(r"$FG_{1} (V)$", fontsize=36)
+        ax.set_ylabel(r"$FG_{2} (V)$", fontsize=36)
+        #ax.set_title("Original Map")
+
+        # Display legend if any labels exist
+        if ax.get_legend_handles_labels()[0]:  # Check if there are any legend entries
+            ax.legend()
+
+        # Adjust layout for better appearance
+        plt.tight_layout()
+
+
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_thesis_map.svg'), dpi=96.0)
 
         # Add optional features (lines, vertices, regions)
         if self.vertical_lines or self.horizontal_lines:
@@ -416,19 +564,52 @@ class SingleMap:
                 vertices = np.array(region)  # Assuming regions store vertices as lists of (x, y)
                 ax.plot(vertices[:, 0], vertices[:, 1], "r--", label="Region Boundary")  # Plot region boundaries
 
-        # Set axis labels and title
-        ax.set_xlabel("$FG_{14}$")
-        ax.set_ylabel("$FG_{12}$")
-        ax.set_title("Original Map")
+        if self.centers:
+            for center in self.centers:
+                #circle = plt.Circle(center, 0.05, fill=False, color="black", linewidth=2)
+                #ax.add_patch(circle)  # Use add_patch instead of add_artist
+                ax.scatter(center[0], center[1], color='red', label="Center")
 
-        # Display legend if any labels exist
-        if ax.get_legend_handles_labels()[0]:  # Check if there are any legend entries
-            ax.legend()
 
-        # Adjust layout for better appearance
-        plt.tight_layout()
         plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_map.png'))
         plt.close()
+
+        data = self.map
+        n_peaks = 4
+        bins = 256
+
+
+        # Compute histogram
+        hist, bin_edges = np.histogram(data.flatten(), bins=bins, density=True)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+        # Apply bin filtering
+        #condition = np.where(hist > count_threshold / np.sum(hist))  # Normalize count threshold
+        #bin_centers = bin_centers[condition]
+        #hist = hist[condition]
+        """
+        # Plot histogram
+        plt.figure(figsize=(8, 5))
+        plt.hist(data.flatten(), bins=bins, density=True, alpha=0.5, color='gray')
+        plt.plot(bin_centers, hist, color='orangered')
+        plt.axvline(0.1, color='orangered')
+        plt.axvline(0.9, color='orangered')
+        plt.xlabel("Intensity Value")
+        plt.ylabel("Density")
+        plt.title(f'{self.tread}_{self.pulse_dir}')
+        #plt.legend()
+        plt.grid()
+        
+
+        # Plot the histogram with KDE (continuous outline)
+        sns.displot(data, kde=True, color='skyblue', bins=bins, kde_kws={'bw_method': 0.05})
+
+        # Customize labels and title
+        plt.title('Histogram with Continuous Outline (KDE)')
+        plt.xlabel('Value')
+        plt.ylabel('Frequency')
+        """
+        #plt.show()
 
     def detect_lines(self, slope_interval1=(-18, -8), slope_interval2=(-0.9, -0.6), slope_diag=(0.93, 1.08),
                      min_distance=0.0025, max_distance=0.006):
@@ -773,12 +954,33 @@ class SingleMap:
         #self.map = gaussian_filter(self.map, sigma=(0.5, 0.5))
 
         # Normalize the map
-        min_bin = np.min(self.map)
-        max_bin = np.max(self.map)
+        if self.centers:
+            circle_min = []
+            circle_max = []
+
+            center_min, center_max = self.centers
+
+            for i, x in enumerate(self.FG14):
+                for j, y in enumerate(self.FG12):
+                    if is_point_in_circle(x, y, center_min, 0.001):
+                        circle_min.append(self.map[j, i])
+                    if is_point_in_circle(x, y, center_max, 0.001):
+                        circle_max.append(self.map[j, i])
+
+            min_bin = np.mean(circle_min)
+            max_bin = np.mean(circle_max)
+            print(min_bin, max_bin)
+        else:
+            min_bin = np.min(self.map)
+            max_bin = np.max(self.map)
+
         self.map = (self.map - min_bin) / (max_bin - min_bin)
 
     def set_comp_fac(self, comp_fac):
         self.comp_fac = comp_fac
+
+    def set_centers(self, center_min, center_max):
+        self.centers = [center_min, center_max]
 
 
 def find_intersection(line1, line2):
@@ -842,4 +1044,39 @@ def get_value_range(data):
     max_bin = np.max(bins_temp) + pad * range_width
 
     return min_bin, max_bin
+
+def lorentzian(x, x0, gamma, A):
+    """Single Lorentzian function."""
+    return (A / np.pi) * (gamma / ((x - x0)**2 + gamma**2))
+
+def multi_lorentzian(x, *params):
+    """Sum of multiple Lorentzian functions."""
+    n = len(params) // 3  # Each peak has (x0, gamma, A)
+    y = np.zeros_like(x)
+    for i in range(n):
+        x0, gamma, A = params[3*i:3*i+3]
+        y += lorentzian(x, x0, gamma, A)
+    return y
+
+def gaussian(x, x0, sigma, A):
+    """Single Gaussian function."""
+    return (A / np.sqrt(2 * np.pi * sigma**2)) * np.exp(-((x - x0)**2) / (2 * sigma**2))
+
+def multi_gaussian(x, *params):
+    """Sum of multiple Gaussian functions."""
+    n = len(params) // 3  # Each peak has (x0, sigma, A)
+    y = np.zeros_like(x)
+    for i in range(n):
+        x0, sigma, A = params[3*i:3*i+3]
+        y += gaussian(x, x0, sigma, A)
+    return y
+
+def is_point_in_circle(x, y, center, radius):
+    x_c, y_c = center
+    # Calculate the Euclidean distance from the point to the center of the circle
+    distance = math.sqrt((x - x_c)**2 + (y - y_c)**2)
+
+    # If the distance is less than or equal to the radius, the point is inside or on the circle
+    return distance <= radius
+
 
