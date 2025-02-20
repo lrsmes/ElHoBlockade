@@ -495,6 +495,16 @@ class SingleMap:
 
         return mean_trans, std_trans, mean_block, std_block
 
+    def save_map(self):
+        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_map.npy'), self.map)
+
+        X, Y = np.meshgrid(self.FG14, self.FG12)
+
+        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_FG14.npy'), X)
+        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_FG12.npy'), Y)
+
+
+
     def plot_map(self):
         """
         Plot the map with optional regions using pcolormesh and include optional features like lines, vertices, and regions.
@@ -523,11 +533,11 @@ class SingleMap:
         ax.set_ylim(np.min(self.FG12), np.max(self.FG12))
         ax.set_xlim(np.min(self.FG14), np.max(self.FG14))
 
-        ax.set_xticks([5.18])
-        ax.set_yticks([5.28, 5.29])
+        ax.set_xticks([5.18, 5.19])
+        ax.set_yticks([5.27, 5.28])
 
         ax.text(5.1825, 5.2925, r'$t_{read} =$' + r'${} \mu s$'.format(np.round(self.tread * 125 * 1e-6, 2)),
-                fontsize=32, color='black')
+                fontsize=32, color='white')
 
         ax.patch.set_edgecolor('black')
         ax.patch.set_linewidth(2)
@@ -545,7 +555,7 @@ class SingleMap:
         plt.tight_layout()
 
 
-        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_thesis_map.svg'), dpi=96.0)
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_thesis_map.svg'))
 
         # Add optional features (lines, vertices, regions)
         if self.vertical_lines or self.horizontal_lines:

@@ -34,7 +34,6 @@ def set_custom_style(figure_size, aspect_ratio=0.6):
     """
     1. 
     Single columne figures should be 85 mm wide. Double columne figures should be 180 mm wide.
-    """
     mm = 1/2.54 * 1e-1 # Millimeters in Inches
     if figure_size == 'one column':
         # plt.rcParams['figure.figsize'] = (85 * mm, 85 * mm * aspect_ratio)   # 85mm wide
@@ -47,7 +46,7 @@ def set_custom_style(figure_size, aspect_ratio=0.6):
     else:
         print("Shot")
         raise Exception('The chosen figure size does not comply with the style requirements!')
-
+    """
 
     """
     2.
