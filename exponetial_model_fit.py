@@ -191,7 +191,7 @@ def model_analyz(data_1, data_2, prior_pred, trace, plot_density=False):
         plot_parameter_distributions(trace.posterior, title="Posterior Distributions")
 
 
-def main(p0, path_dir='/Users/hubert.D/Documents/0T_ratios/', single=True):
+def main(p0, path_dir='/Users/Mester.INSTITUT2B/PycharmProjects/ElHoBlockade/400mT_both_dir/', single=True):
 
     if single:
         dp1 = np.array([path_dir + 'tread_transport.npy', path_dir + 'ratios_transport.npy', path_dir + 'ratios_err_transport.npy'])
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     p0_0T = [(1.0, 0.3, 1.0, 0.3),
              (0.5, 0.3, 0.5, 0.3),
              (1.5, 0.04),
-             (16.0, 1.5),
+             (16.0, 0.5),
              (0.2, 0.2)]
 
     p0_400mT = [(1.0, 0.5, 1.0, 0.5),
@@ -280,4 +280,4 @@ if __name__ == "__main__":
                 (0.2, 0.2)]
 
     main(p0_400mT
-         , '/Users/larsm/PycharmProjects/ElHoBlockade/0T_both_dir/', True)
+         , '/Users/Mester.INSTITUT2B/PycharmProjects/ElHoBlockade/400mT_both_dir/', False)

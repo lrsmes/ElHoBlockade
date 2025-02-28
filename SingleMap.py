@@ -512,7 +512,7 @@ class SingleMap:
         Parameters:
             reg (bool): Whether to include regions in the plot.
         """
-        fig, ax = plt.subplots(figsize=(12, 10))
+        fig, ax = plt.subplots(figsize=(12, 8))
 
         # Plot the 2D map using pcolormesh
         X, Y = np.meshgrid(self.FG14, self.FG12)
@@ -520,31 +520,31 @@ class SingleMap:
 
         # Add a colorbar to the figure
         #cbar_ax = fig.add_axes([0.85, 0.75, 0.03, 0.2])
-        cbar1 = fig.colorbar(c1, ax=ax, location='top', shrink=0.3, anchor=(1.0, 0.0), aspect=15, pad=0.01)
-        cbar1.set_ticks([0, 1])
-        cbar1.ax.tick_params(direction='in', width=1, length=15, labelsize=24)
+        #cbar1 = fig.colorbar(c1, ax=ax, location='top', shrink=0.3, anchor=(1.0, 0.0), aspect=15, pad=0.01)
+        #cbar1.set_ticks([0, 1])
+        #cbar1.ax.tick_params(direction='in', width=1, length=15, labelsize=8)
         #cbar1.set_label("$R_{demod.} (a.u.)$", fontsize=18)
         #cbar1.ax.xaxis.set_label_position('bottom')
 
-        ax.tick_params(axis='x', direction='in', length=8, labelsize=28, width=2)  # Move x ticks inside
-        ax.tick_params(axis='y', direction='in', length=8, labelsize=28, width=2)  # Move y ticks inside
+        ax.tick_params(axis='x', direction='in', length=8, labelsize=8, width=2)  # Move x ticks inside
+        ax.tick_params(axis='y', direction='in', length=8, labelsize=8, width=2)  # Move y ticks inside
 
         # Set y-axis limits
         ax.set_ylim(np.min(self.FG12), np.max(self.FG12))
         ax.set_xlim(np.min(self.FG14), np.max(self.FG14))
 
-        ax.set_xticks([5.18, 5.19])
-        ax.set_yticks([5.27, 5.28])
+        #ax.set_xticks([5.18, 5.19])
+        #ax.set_yticks([5.27, 5.28])
 
-        ax.text(5.1825, 5.2925, r'$t_{read} =$' + r'${} \mu s$'.format(np.round(self.tread * 125 * 1e-6, 2)),
-                fontsize=32, color='white')
+        #ax.text(5.1825, 5.2925, r'$t_{read} =$' + r'${} \mu s$'.format(np.round(self.tread * 125 * 1e-6, 2)),
+        #        fontsize=8, color='white')
 
         ax.patch.set_edgecolor('black')
         ax.patch.set_linewidth(2)
 
         # Set axis labels and title
-        ax.set_xlabel(r"$FG_{1} (V)$", fontsize=36)
-        ax.set_ylabel(r"$FG_{2} (V)$", fontsize=36)
+        ax.set_xlabel(r"$FG_{1} (V)$", fontsize=9)
+        ax.set_ylabel(r"$FG_{2} (V)$", fontsize=9)
         #ax.set_title("Original Map")
 
         # Display legend if any labels exist
