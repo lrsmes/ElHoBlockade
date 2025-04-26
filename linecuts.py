@@ -13,6 +13,7 @@ from sklearn.preprocessing import normalize
 from scipy.signal import detrend, find_peaks, find_peaks_cwt
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
+from Data_analysis_and_transforms import correct_median_diff
 
 mpl.rcParams['font.size'] = 18
 
@@ -97,6 +98,63 @@ def g_lin(x, g, b):
     return 0.5*g*mu_b*x + b
 
 
+def subtract_background_per_trace(map_data, axis=0, percentile_clip=(2, 98), norm_type="std"):
+    """
+    Subtract a linear background and normalize each trace individually.
+
+    map_data: 2D array
+    axis: 0 (columns) or 1 (rows) along which to process traces
+    percentile_clip: tuple of percentiles to clip outliers
+    norm_type: 'std' (standard deviation) or 'max' (maximum value) normalization
+    """
+
+    if axis == 1:
+        map_data = map_data.T  # always operate along axis=0 internally
+
+    n_points, n_traces = map_data.shape
+    x = np.arange(n_points)
+    corrected = np.empty_like(map_data)
+
+    for i in range(n_traces):
+        y = map_data[:, i]
+
+        # Estimate the derivative (smoothly)
+        derivative = np.gradient(y)
+        valid = derivative[
+            (derivative < np.percentile(derivative, 80)) &
+            (derivative > np.percentile(derivative, 20))
+            ]
+        slope = np.median(valid)
+
+        # Build background
+        background = slope * (x - np.min(x))
+
+        # Subtract background
+        y_corrected = y - background
+
+        # Clip outliers
+        lower, upper = np.percentile(y_corrected, percentile_clip)
+        y_corrected = np.clip(y_corrected, lower, upper)
+
+        # Normalize
+        if norm_type == "std":
+            norm = np.std(y_corrected)
+        elif norm_type == "max":
+            norm = np.max(np.abs(y_corrected))
+        else:
+            raise ValueError("norm_type must be 'std' or 'max'.")
+
+        if norm != 0:
+            y_corrected /= norm
+
+        corrected[:, i] = y_corrected
+
+    if axis == 1:
+        corrected = corrected.T
+
+    return corrected
+
+
 def linecut_500mT():
     current_dir = os.getcwd()
     file_dir = os.path.join(current_dir, "in_plane_linecuts")
@@ -106,12 +164,30 @@ def linecut_500mT():
     DemodR[1] = np.flip(DemodR[1], axis=1)
 
     # substract background
-    DemodR[1] = np.array([trace - np.mean(trace) for trace in DemodR[1].T]).T
-    DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
-    DemodR[2] = np.array([trace - np.mean(trace) for trace in DemodR[2][:, :-1].T]).T
+    #DemodR[1] = correct_median_diff(DemodR[1])
+    #DemodR[0] = correct_median_diff(DemodR[0])
+    #DemodR[2] = correct_median_diff(DemodR[2][:, :-1])
+
+    #DemodR[1] = np.array([trace - np.mean(trace) for trace in DemodR[1].T]).T
+    #DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
+    #DemodR[2] = np.array([trace - np.mean(trace) for trace in DemodR[2][:, :-1].T]).T
+
+    DemodR[0] = subtract_background_per_trace(DemodR[0], axis=0)
+    DemodR[1] = subtract_background_per_trace(DemodR[1], axis=0)
+    DemodR[2] = subtract_background_per_trace(DemodR[2][:, :-1], axis=0)
 
     for i, map in enumerate(DemodR):
         DemodR[i] = gaussian_filter1d(map, 1, axis=0)
+
+    Bx_full = np.linspace(0, 1.5, map.shape[1])
+    fig = plt.figure(figsize=(12, 6))
+    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='viridis')
+    plt.ylim(5.1928, 5.189)
+    plt.ylabel('$FG_{14}$')
+    plt.xlabel('$B_{ \parallel}(T)$')
+    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
+    cbar.set_label('$R_{dem} (a.u.)$', loc='left')
+    plt.show()
 
     # stitch maps to one
     start_second = np.argmin(np.abs(np.flip(Bx[1])-0.64))
@@ -223,14 +299,14 @@ def linecut_500mT():
 
 
     fig = plt.figure(figsize=(12, 6))
-    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='Greys', vmin=-7.5e-6, vmax=7.5e-6)
+    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='viridis')#, vmin=-7.5e-6, vmax=7.5e-6)
     #plt.scatter(Bx_full[list(ny_rows)], FG14[0][list(ny_cols)], facecolors='none', edgecolors='red', alpha=0.5)
     #plt.scatter(Bx_full[list(upper_rows)], FG14[0][list(upper_cols)], facecolors='none', edgecolors='orange', alpha=0.5)
     #plt.scatter(Bx_full[list(lower_rows)], FG14[0][list(lower_cols)], facecolors='none', edgecolors='magenta', alpha=0.5)
-    plt.scatter(Bx_full[list(shoulder1_rows)], FG14[0][list(shoulder1_cols)], facecolors='none', edgecolors='yellow',
-                alpha=0.5)
-    plt.scatter(Bx_full[list(shoulder2_rows)], FG14[0][list(shoulder2_cols)], facecolors='none', edgecolors='yellow',
-                alpha=0.5)
+    #plt.scatter(Bx_full[list(shoulder1_rows)], FG14[0][list(shoulder1_cols)], facecolors='none', edgecolors='yellow',
+    #            alpha=0.5)
+    #plt.scatter(Bx_full[list(shoulder2_rows)], FG14[0][list(shoulder2_cols)], facecolors='none', edgecolors='yellow',
+    #            alpha=0.5)
     #plt.axhline(FG14[0][175], color='red')
     #plt.axhline(FG14[0][225], color='red')
     #plt.plot(Bx_full, f(Bx_full, 0.00035, 5.1914), color='orange')
@@ -242,6 +318,7 @@ def linecut_500mT():
     plt.xlabel('$B_{ \parallel}(T)$')
     cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
     cbar.set_label('$R_{dem} (a.u.)$', loc='left')
+    plt.show()
 
 
     plt.figure(figsize=(12, 8))

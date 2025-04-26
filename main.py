@@ -1798,26 +1798,26 @@ def both_dir_1T():
 
     # 2475
     single_maps_blockade[0].add_horizontal_line(-0.85, 5.2618)
-    single_maps_blockade[0].add_horizontal_line(-0.85, 5.270)
-    single_maps_blockade[0].add_vertical_line(-11, 5.1729)
+    single_maps_blockade[0].add_horizontal_line(-0.85, 5.2701)
+    single_maps_blockade[0].add_vertical_line(-11, 5.1727)
     single_maps_blockade[0].add_vertical_line(-11, 5.1777)
 
     # 4450
     single_maps_blockade[1].add_horizontal_line(-0.85, 5.2621)
     single_maps_blockade[1].add_horizontal_line(-0.85, 5.2706)
-    single_maps_blockade[1].add_vertical_line(-11, 5.1726)
+    single_maps_blockade[1].add_vertical_line(-11, 5.1725)
     single_maps_blockade[1].add_vertical_line(-11, 5.1774)
 
     # 6425
     single_maps_blockade[2].add_horizontal_line(-0.85, 5.2623)
     single_maps_blockade[2].add_horizontal_line(-0.85, 5.2707)
-    single_maps_blockade[2].add_vertical_line(-11, 5.1725)
+    single_maps_blockade[2].add_vertical_line(-11, 5.1724)
     single_maps_blockade[2].add_vertical_line(-11, 5.1773)
 
     # 8400
-    single_maps_blockade[3].add_horizontal_line(-0.85, 5.2625)
+    single_maps_blockade[3].add_horizontal_line(-0.85, 5.2624)
     single_maps_blockade[3].add_horizontal_line(-0.85, 5.271)
-    single_maps_blockade[3].add_vertical_line(-11, 5.1725)
+    single_maps_blockade[3].add_vertical_line(-11, 5.1724)
     single_maps_blockade[3].add_vertical_line(-11, 5.1773)
 
     # 10375
@@ -1829,7 +1829,7 @@ def both_dir_1T():
     # 12350
     single_maps_blockade[5].add_horizontal_line(-0.85, 5.2626)
     single_maps_blockade[5].add_horizontal_line(-0.85, 5.2713)
-    single_maps_blockade[5].add_vertical_line(-11, 5.1724)
+    single_maps_blockade[5].add_vertical_line(-11, 5.1723)
     single_maps_blockade[5].add_vertical_line(-11, 5.1772)
 
     # 14325
@@ -1853,7 +1853,7 @@ def both_dir_1T():
     # 20250
     single_maps_blockade[9].add_horizontal_line(-0.85, 5.2626)
     single_maps_blockade[9].add_horizontal_line(-0.85, 5.2712)
-    single_maps_blockade[9].add_vertical_line(-11, 5.1724)
+    single_maps_blockade[9].add_vertical_line(-11, 5.1723)
     single_maps_blockade[9].add_vertical_line(-11, 5.1771)
 
     # 22225
@@ -2237,7 +2237,7 @@ def both_dir_1T():
     popt, pcov = curve_fit(exponential_model,
                            ydata=ratios_blockade,
                            xdata=t_read_s,
-                           sigma=ratios_err_blockade[4:],
+                           sigma=ratios_err_blockade,
                            p0=[1, 0.5, 0.5])
 
     # popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
@@ -2360,9 +2360,9 @@ def main():
     #regime_ti_larger_tl_450mT()
     #regime_ti_larger_tl_200mT()
     #both_dir_500mT()
-    both_dir_400mT()
+    #both_dir_400mT()
     #both_dir_0T()
-    #both_dir_1T()
+    both_dir_1T()
 
 if __name__ == "__main__":
     main()

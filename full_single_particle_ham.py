@@ -51,7 +51,7 @@ def main(coloring="band"):
     theta = np.deg2rad(0)
     bfields = np.arange(-.1, 1.5, 0.001)
     eigen_energies, eigen_vectors, eigen_energies_h, eigen_vectors_h, diff = calc_Bfield_dispersion(
-        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off=0.0, bortho_off=0.5
+        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off=0.0, bortho_off=0.0
     )
 
     plt.figure()
@@ -111,7 +111,7 @@ def main(coloring="band"):
     y_nu = np.vstack([diff[:, 1, 0], diff[:, 0, 1]]).T  # ν
     y_alpha = np.vstack([diff[:, 2, 0], diff[:, 0, 2]]).T  # α
     y_beta = np.vstack([diff[:, 3, 1], diff[:, 1, 3]]).T  # β
-    #y_gamma = np.vstack([diff[:, 3, 0], diff[:, 0, 3], diff[:, 2, 1], diff[:, 1, 2]]).T  # γ
+    y_gamma = np.vstack([diff[:, 3, 0], diff[:, 0, 3], diff[:, 2, 1], diff[:, 1, 2]]).T  # γ
     y_spin_valley = np.vstack([diff[:, 1, 1], diff[:, 2, 2], diff[:, 3, 3]]).T  # Spin-Valley
     y_valley = np.vstack([diff[:, 3, 2], diff[:, 2, 3]]).T  # Valley
 
@@ -119,9 +119,9 @@ def main(coloring="band"):
     plt.figure(figsize=(12, 6))
     plt.scatter(bfields, y_gs_gs, s=1.0, label='GS-GS')
     plt.scatter(np.repeat(bfields, 2), y_nu.flatten(), s=1.0, label='$\\nu$')
-    #plt.scatter(np.repeat(bfields, 2), y_alpha.flatten(), s=1.0, label='$\\alpha$')
+    plt.scatter(np.repeat(bfields, 2), y_alpha.flatten(), s=1.0, label='$\\alpha$')
     plt.scatter(np.repeat(bfields, 2), y_beta.flatten(), s=1.0, label='$\\beta$')
-    #plt.scatter(np.repeat(bfields, 4), y_gamma.flatten(), s=1.0, label='$\\gamma$')
+    plt.scatter(np.repeat(bfields, 4), y_gamma.flatten(), s=1.0, label='$\\gamma$')
     plt.scatter(np.repeat(bfields, 3), y_spin_valley.flatten(), s=1.0, label='Spin-Valley')
     plt.scatter(np.repeat(bfields, 2), y_valley.flatten(), s=1.0, label='Valley')
     plt.xlabel('B-field (T)')

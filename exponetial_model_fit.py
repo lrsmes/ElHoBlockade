@@ -183,6 +183,7 @@ def model_analyz(data_1, data_2, prior_pred, trace, plot_density=False):
 
     plt.tight_layout()
     plt.show()
+    print(posterior_means['lamda1'], posterior_std['lamda1'], posterior_means['lamda2'], posterior_std['lamda2'])
     if plot_density:
         # Plot prior distributions
         plot_parameter_distributions(prior_pred.prior, title="Prior Distributions")
@@ -279,5 +280,5 @@ if __name__ == "__main__":
                 (3.0, 2.0),
                 (0.2, 0.2)]
 
-    main(p0_400mT
-         , '/Users/Mester.INSTITUT2B/PycharmProjects/ElHoBlockade/400mT_both_dir/', False)
+    main(p0_0T
+         , '/Users/Mester.INSTITUT2B/PycharmProjects/ElHoBlockade/0T_both_dir/', True)
