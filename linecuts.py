@@ -6,7 +6,7 @@ import hdf5_helper as helper
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from scipy import constants
-from utils import find_hdf5_files
+from utils import find_hdf5_files, linear_model
 from HDF5Data import HDF5Data
 from sklearn.preprocessing import normalize
 from scipy.signal import detrend, find_peaks, find_peaks_cwt
@@ -28,9 +28,9 @@ def load_data(files, dir):
         hdf5data = HDF5Data(readpath=file)
         hdf5data.set_arrays()
         hdf5data.set_array_tags()
-        FG14.append(hdf5data.arrays[0].T[0])
-        Bx.append(hdf5data.arrays[1][0])
-        DemodR.append(np.flip(hdf5data.arrays[3], axis=0))
+        FG14.append(hdf5data.arrays[0])
+        Bx.append(hdf5data.arrays[1])
+        DemodR.append(hdf5data.arrays[3])
 
     return FG14, Bx, DemodR
 
@@ -97,7 +97,7 @@ def g_lin(x, g, b):
     return 0.5*g*mu_b*x + b
 
 
-def subtract_background_per_trace(map_data, axis=0, percentile_clip=(2, 98), norm_type="std"):
+def subtract_background_per_trace(map_data, FG, axis=0, percentile_clip=(2, 98)):
     """
     Subtract a linear background and normalize each trace individually.
 
@@ -123,16 +123,22 @@ def subtract_background_per_trace(map_data, axis=0, percentile_clip=(2, 98), nor
 
         # Estimate the derivative (smoothly)
         #print(y[-11:-1])
-        derivative = np.gradient(y[2:6])
+        derivative = np.gradient(y_corrected[-40:-3])
         valid = derivative[
-            (derivative < np.percentile(derivative, 80)) &
-            (derivative > np.percentile(derivative, 20))
+            #(derivative < np.percentile(derivative, 60)) &
+            #(derivative > np.percentile(derivative, 5)) &
+            (derivative < 1e-6)
             ]
-        slope = np.median(derivative)
-        print(slope)
+        #print(derivative)
+        #slope = np.median(valid)
+        #print(slope)
+        popt, _ = curve_fit(linear_model, FG[-60:-5], y_corrected[-60:-5])
+        slope = popt[0]
+        #print(slope)
 
         # Build background
-        background = slope * (x - np.min(x))
+        #background = slope * (x - np.min(x))
+        background = slope * (FG - np.min(FG))
 
         # Subtract background
         y_corrected = y - background
@@ -143,11 +149,49 @@ def subtract_background_per_trace(map_data, axis=0, percentile_clip=(2, 98), nor
         y_corrected = (y_corrected - min_bin) / (max_bin - min_bin)
 
         corrected[:, i] = y_corrected
+        #print(y_corrected)
 
     if axis == 1:
         corrected = corrected.T
 
     return corrected
+
+def linecut_400mT():
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "linecut_400mT")
+    file_names = find_hdf5_files(file_dir)
+
+    FG14, Bx, DemodR = load_data(file_names, current_dir)
+    #DemodR[0] = np.flip(DemodR[0], axis=1)
+
+    DemodR[0] = subtract_background_per_trace(DemodR[0], FG14[0][:, 0], axis=0)
+
+    map = DemodR[0]
+
+    peaks_found = []
+
+    for i, row in enumerate(map.T):
+        peaks, properties = find_peaks(-row, width=12, height=-0.75)
+        for peak in peaks:
+            peaks_found.append((Bx[0][peak, i], FG14[0][peak, i]))
+
+    Bx_full = np.linspace(0, 2, map.shape[1])
+    fig = plt.figure(figsize=(12, 6))
+    im = plt.pcolormesh(Bx[0], FG14[0],  map, cmap='viridis_r')
+    for peak in peaks_found:
+        plt.scatter(*peak)
+    #plt.ylim(np.max(FG14[0]), np.min(FG14[0]))
+    #plt.xlim(0, 2)
+    plt.ylabel('$FG_{14}$')
+    plt.xlabel('$B_{ \parallel}(T)$')
+    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
+    cbar.set_label('$R_{dem} (a.u.)$', loc='left')
+    plt.show()
+
+    np.save(os.path.join(file_dir, 'linecut_400mT_map.npy'), map)
+    np.save(os.path.join(file_dir, 'linecut_400mT_Bpara.npy'), Bx[0])
+    np.save(os.path.join(file_dir, 'linecut_400mT_FG14.npy'), FG14[0])
+
 
 
 def linecut_500mT():
@@ -171,8 +215,8 @@ def linecut_500mT():
     DemodR[1] = subtract_background_per_trace(DemodR[1], axis=0)
     DemodR[2] = subtract_background_per_trace(DemodR[2][:, :-1], axis=0)
 
-    #for i, map in enumerate(DemodR):
-    #    DemodR[i] = gaussian_filter1d(map, 1, axis=0)
+    for i, map in enumerate(DemodR):
+        DemodR[i] = gaussian_filter1d(map, 1, axis=0)
 
 
     # stitch maps to one
@@ -192,7 +236,7 @@ def linecut_500mT():
 
     Bx_full = np.linspace(0, 1.5, map.shape[1])
     fig = plt.figure(figsize=(12, 6))
-    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='viridis')
+    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='viridis_r', vmin=0.05, vmax=0.95)
     plt.ylim(5.1928, 5.189)
     plt.ylabel('$FG_{14}$')
     plt.xlabel('$B_{ \parallel}(T)$')
@@ -370,7 +414,8 @@ def linecut_1T():
     #DemodR[0] = np.flip(DemodR[0], axis=0)
 
     # substract background
-    DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
+    DemodR[0] = subtract_background_per_trace(DemodR[0], axis=0)
+    #DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
     #DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
     #DemodR[2] = np.array([trace - np.mean(trace) for trace in DemodR[2][:, :-1].T]).T
 
@@ -407,6 +452,17 @@ def linecut_1T():
 
     # find peaks
     Bx_full = np.linspace(0, 2, map.shape[1])
+    fig = plt.figure(figsize=(12, 6))
+    im = plt.pcolormesh(Bx_full, FG14,  map, cmap='viridis_r')
+    plt.ylim(5.1916, 5.186)
+    plt.ylabel('$FG_{14}$')
+    plt.xlabel('$B_{ \parallel}(T)$')
+    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
+    cbar.set_label('$R_{dem} (a.u.)$', loc='left')
+    plt.show()
+
+
+
     ny_peaks = []
     upper_peaks = []
     lower_peaks = []
@@ -564,14 +620,11 @@ def linecut_0T():
     plt.show()
 
 
-
-
-
-
 def main():
     #linecut_0T()
-    popt_500mT, pcov_500mT = linecut_500mT()
+    #popt_500mT, pcov_500mT = linecut_500mT()
     #popt_1T, pcov_1T = linecut_1T()
+    linecut_400mT()
 
     '''
     x = np.array([0.5, 1])
