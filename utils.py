@@ -1,6 +1,6 @@
 import math
 import os
-import autograd.numpy as np
+import numpy as np
 import hdf5_helper as helper
 import matplotlib.pyplot as plt
 from scipy import stats, ndimage

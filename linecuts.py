@@ -6,7 +6,6 @@ import hdf5_helper as helper
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from scipy import constants
-from auto_fit import fit_with_derivative
 from utils import find_hdf5_files
 from HDF5Data import HDF5Data
 from sklearn.preprocessing import normalize
@@ -118,13 +117,19 @@ def subtract_background_per_trace(map_data, axis=0, percentile_clip=(2, 98), nor
     for i in range(n_traces):
         y = map_data[:, i]
 
+        # Clip outliers
+        lower, upper = np.percentile(y, percentile_clip)
+        y_corrected = np.clip(y, lower, upper)
+
         # Estimate the derivative (smoothly)
-        derivative = np.gradient(y)
+        #print(y[-11:-1])
+        derivative = np.gradient(y[2:6])
         valid = derivative[
             (derivative < np.percentile(derivative, 80)) &
             (derivative > np.percentile(derivative, 20))
             ]
-        slope = np.median(valid)
+        slope = np.median(derivative)
+        print(slope)
 
         # Build background
         background = slope * (x - np.min(x))
@@ -132,20 +137,10 @@ def subtract_background_per_trace(map_data, axis=0, percentile_clip=(2, 98), nor
         # Subtract background
         y_corrected = y - background
 
-        # Clip outliers
-        lower, upper = np.percentile(y_corrected, percentile_clip)
-        y_corrected = np.clip(y_corrected, lower, upper)
+        min_bin = np.min(y_corrected)
+        max_bin = np.max(y_corrected)
 
-        # Normalize
-        if norm_type == "std":
-            norm = np.std(y_corrected)
-        elif norm_type == "max":
-            norm = np.max(np.abs(y_corrected))
-        else:
-            raise ValueError("norm_type must be 'std' or 'max'.")
-
-        if norm != 0:
-            y_corrected /= norm
+        y_corrected = (y_corrected - min_bin) / (max_bin - min_bin)
 
         corrected[:, i] = y_corrected
 
@@ -176,18 +171,9 @@ def linecut_500mT():
     DemodR[1] = subtract_background_per_trace(DemodR[1], axis=0)
     DemodR[2] = subtract_background_per_trace(DemodR[2][:, :-1], axis=0)
 
-    for i, map in enumerate(DemodR):
-        DemodR[i] = gaussian_filter1d(map, 1, axis=0)
+    #for i, map in enumerate(DemodR):
+    #    DemodR[i] = gaussian_filter1d(map, 1, axis=0)
 
-    Bx_full = np.linspace(0, 1.5, map.shape[1])
-    fig = plt.figure(figsize=(12, 6))
-    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='viridis')
-    plt.ylim(5.1928, 5.189)
-    plt.ylabel('$FG_{14}$')
-    plt.xlabel('$B_{ \parallel}(T)$')
-    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
-    cbar.set_label('$R_{dem} (a.u.)$', loc='left')
-    plt.show()
 
     # stitch maps to one
     start_second = np.argmin(np.abs(np.flip(Bx[1])-0.64))
@@ -203,6 +189,16 @@ def linecut_500mT():
 
     map = map[55:-10]
     FG14[0] = FG14[0][55:-10]
+
+    Bx_full = np.linspace(0, 1.5, map.shape[1])
+    fig = plt.figure(figsize=(12, 6))
+    im = plt.pcolormesh(Bx_full, FG14[0],  map, cmap='viridis')
+    plt.ylim(5.1928, 5.189)
+    plt.ylabel('$FG_{14}$')
+    plt.xlabel('$B_{ \parallel}(T)$')
+    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
+    cbar.set_label('$R_{dem} (a.u.)$', loc='left')
+    plt.show()
 
     #p_low, p_high = np.percentile(map, (0.01, 99.99))
     #map = np.clip(map, -2, 2)
