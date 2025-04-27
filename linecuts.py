@@ -169,11 +169,24 @@ def linecut_400mT():
     map = DemodR[0]
 
     peaks_found = []
+    diff = []
 
     for i, row in enumerate(map.T):
-        peaks, properties = find_peaks(-row, width=12, height=-0.75)
-        for peak in peaks:
-            peaks_found.append((Bx[0][peak, i], FG14[0][peak, i]))
+        if i%20 == 0:
+            peaks, properties = find_peaks((1-row), width=10, height=0.1, prominence=0.05)
+            if len(peaks) == 2:
+                diff.append(np.abs(FG14[0][peaks[0], i] - FG14[0][peaks[1], i]))
+                for peak in peaks:
+                    if FG14[0][peak, i] < 5.18687:
+                        peaks_found.append([Bx[0][peak, i], FG14[0][peak, i]])
+
+    dFG = FG14[0][1, 0] - FG14[0][0, 0]
+    print(dFG)
+    leverarmFG12 = 0.08488 #eV/V
+    leverarmFG14 = leverarmFG12*(5.196/5.157)
+    a = -1.73301
+    delE = (np.array(diff)*dFG)*leverarmFG14*np.sqrt(1+(a)**2)*10**5 #10mueV
+    print(delE)
 
     Bx_full = np.linspace(0, 2, map.shape[1])
     fig = plt.figure(figsize=(12, 6))
@@ -183,14 +196,20 @@ def linecut_400mT():
     #plt.ylim(np.max(FG14[0]), np.min(FG14[0]))
     #plt.xlim(0, 2)
     plt.ylabel('$FG_{14}$')
-    plt.xlabel('$B_{ \parallel}(T)$')
+    plt.xlabel('$B_{\parallel}(T)$')
     cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
     cbar.set_label('$R_{dem} (a.u.)$', loc='left')
+    plt.show()
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(peaks_found[:, 0], diff)
     plt.show()
 
     np.save(os.path.join(file_dir, 'linecut_400mT_map.npy'), map)
     np.save(os.path.join(file_dir, 'linecut_400mT_Bpara.npy'), Bx[0])
     np.save(os.path.join(file_dir, 'linecut_400mT_FG14.npy'), FG14[0])
+
+    return delE
 
 
 
