@@ -16,7 +16,7 @@ from Data_analysis_and_transforms import correct_median_diff
 
 mpl.rcParams['font.size'] = 18
 
-mu_b = constants.physical_constants['Bohr magneton in eV/T'][0]*10**5
+mu_b = constants.physical_constants['Bohr magneton in eV/T'][0]#*1e6
 
 
 def load_data(files, dir):
@@ -86,12 +86,13 @@ def g_neg(x, g, b, a):
 
 B_perp = 0.5
 
-def del_E(x, gs, gv, delta_S0):
-    return -0.5*gv*mu_b*B_perp+0.5*np.sqrt((gv*mu_b*B_perp)**2-2*delta_S0*gs*mu_b*B_perp+delta_S0**2+(gs*mu_b*x)**2)
+def del_E(x, gs, delta):
+    return np.sqrt((delta) ** 2 + (gs * mu_b * x) ** 2) #-gv*mu_b*B_perp+
 
 def del_E2(x, gs, delta):
     #return -0.5*gv*mu_b*B_perp + 0.5*np.sqrt((delta - gs * mu_b * B_perp)**2 + (gs * mu_b * x) ** 2)
-    return (delta) + np.sqrt((delta) ** 2 + (2 * mu_b * x) ** 2)
+    #return np.sqrt((delta + 2 * mu_b * x) ** 2 + (2 * mu_b * x) ** 2)
+    return np.sqrt((delta - gs * mu_b * B_perp) ** 2 + (gs * mu_b * x) ** 2)
 
 def g_lin(x, g, b):
     return 0.5*g*mu_b*x + b
@@ -170,39 +171,52 @@ def linecut_400mT():
 
     peaks_found = []
     diff = []
+    Bpara_peak = []
 
     for i, row in enumerate(map.T):
-        if i%20 == 0:
+        if i%10 == 0:
             peaks, properties = find_peaks((1-row), width=10, height=0.1, prominence=0.05)
             if len(peaks) == 2:
                 diff.append(np.abs(FG14[0][peaks[0], i] - FG14[0][peaks[1], i]))
+                Bpara_peak.append(Bx[0][peaks[0], i])
                 for peak in peaks:
                     if FG14[0][peak, i] < 5.18687:
-                        peaks_found.append([Bx[0][peak, i], FG14[0][peak, i]])
+                        peaks_found.append((Bx[0][peak, i], FG14[0][peak, i]))
 
     dFG = FG14[0][1, 0] - FG14[0][0, 0]
     print(dFG)
+    err = [600*1e-6]*len(diff)
     leverarmFG12 = 0.08488 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
-    a = -1.73301
-    delE = (np.array(diff)*dFG)*leverarmFG14*np.sqrt(1+(a)**2)*10**5 #10mueV
+    a = -0.951128
+    delE = (np.array(diff))*leverarmFG14*np.sqrt(1+(a)**2)#*1e6 #mueV
+    err = (np.array(err))*leverarmFG14 * np.sqrt(1 + (a) ** 2)
     print(delE)
 
-    Bx_full = np.linspace(0, 2, map.shape[1])
+    popt, pcov = curve_fit(del_E2, Bpara_peak[6:], delE[6:], sigma=err[6:], p0=[2, -60*1e-6])
+    print(f'g-Factor: {popt[0]}; delta: {popt[1]*1e6}')
+
+    Bx_full = np.linspace(0, 2.3, 1000)
     fig = plt.figure(figsize=(12, 6))
     im = plt.pcolormesh(Bx[0], FG14[0],  map, cmap='viridis_r')
-    for peak in peaks_found:
+    for i, peak in enumerate(peaks_found):
         plt.scatter(*peak)
     #plt.ylim(np.max(FG14[0]), np.min(FG14[0]))
     #plt.xlim(0, 2)
     plt.ylabel('$FG_{14}$')
     plt.xlabel('$B_{\parallel}(T)$')
-    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1,0))
+    cbar = fig.colorbar(im, location='top', shrink=0.33, anchor=(1, 0))
     cbar.set_label('$R_{dem} (a.u.)$', loc='left')
     plt.show()
 
+    test = [0.0017]
+
     plt.figure(figsize=(12, 6))
-    plt.plot(peaks_found[:, 0], diff)
+    for i, peak in enumerate(delE[6:]):
+        plt.scatter(Bpara_peak[i+6], peak)
+    #plt.ylim(0, 0.002)
+    plt.plot(Bx_full, del_E2(Bx_full, *popt))
+    #plt.xlim(0, 2.3)
     plt.show()
 
     np.save(os.path.join(file_dir, 'linecut_400mT_map.npy'), map)
@@ -226,17 +240,18 @@ def linecut_500mT():
     #DemodR[0] = correct_median_diff(DemodR[0])
     #DemodR[2] = correct_median_diff(DemodR[2][:, :-1])
 
-    #DemodR[1] = np.array([trace - np.mean(trace) for trace in DemodR[1].T]).T
-    #DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
-    #DemodR[2] = np.array([trace - np.mean(trace) for trace in DemodR[2][:, :-1].T]).T
+    DemodR[1] = np.array([trace - np.mean(trace) for trace in DemodR[1].T]).T
+    DemodR[0] = np.array([trace - np.mean(trace) for trace in DemodR[0].T]).T
+    DemodR[2] = np.array([trace - np.mean(trace) for trace in DemodR[2][:, :-1].T]).T
 
-    DemodR[0] = subtract_background_per_trace(DemodR[0], axis=0)
-    DemodR[1] = subtract_background_per_trace(DemodR[1], axis=0)
-    DemodR[2] = subtract_background_per_trace(DemodR[2][:, :-1], axis=0)
+    #DemodR[0] = subtract_background_per_trace(DemodR[0], axis=0)
+    #DemodR[1] = subtract_background_per_trace(DemodR[1], axis=0)
+    #DemodR[2] = subtract_background_per_trace(DemodR[2][:, :-1], axis=0)
 
     for i, map in enumerate(DemodR):
         DemodR[i] = gaussian_filter1d(map, 1, axis=0)
 
+    FG14 = [map[:, 0] for map in FG14]
 
     # stitch maps to one
     start_second = np.argmin(np.abs(np.flip(Bx[1])-0.64))
@@ -273,6 +288,7 @@ def linecut_500mT():
     shoulder2_peaks = []
     upper_peaks = []
     lower_peaks = []
+
     for i, row in enumerate(map.T):
         peaks, properties = find_peaks(-row, height=0.4e-5, width=22)
         for peak in peaks:
@@ -325,8 +341,8 @@ def linecut_500mT():
     ny_shoulder2_cols = (np.array(ny_shoulder2_cols) * dFG) * leverarmFG14 * np.sqrt(1 + (a) ** 2) * 10 ** 5  # 10mueV
 
     # fitting
-    popt_upper, pcov_upper = curve_fit(del_E2, Bx_full[list(ny_upper_rows)], ny_upper_cols)
-    popt_lower, pcov_lower = curve_fit(del_E2, Bx_full[list(ny_lower_rows)], ny_lower_cols)
+    popt_upper, pcov_upper = curve_fit(del_E, Bx_full[list(ny_upper_rows)], ny_upper_cols)
+    popt_lower, pcov_lower = curve_fit(del_E, Bx_full[list(ny_lower_rows)], ny_lower_cols)
 
     print(f'g-Factor upper: {popt_upper[0]}; b upper: {popt_upper[1]}') #*10**-5
     print(f'g-Factor lower: {popt_lower[0]}; b lower: {popt_lower[1]}')
