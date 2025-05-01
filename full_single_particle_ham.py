@@ -42,17 +42,20 @@ def calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, de
 
 def main(coloring="band"):
     # Energies in meV
-    deltaSO = -60 * 10 ** -3
-    deltaKK = 0.0 * 10 ** -3
+    deltaSO = -40 * 10 ** -3
+    deltaKK = 0.01 * 10 ** -3
     deltaSV = 0.0 * 10 ** -3
     delta_orb = 1.6
     gs = 2.0
     gv = 14
     theta = np.deg2rad(0)
-    bfields = np.arange(-.1, 1.5, 0.001)
+    bfields = np.arange(-.1, 2.5, 0.01)
     eigen_energies, eigen_vectors, eigen_energies_h, eigen_vectors_h, diff = calc_Bfield_dispersion(
-        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off=0.0, bortho_off=0.0
+        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off=0.0, bortho_off=0.4
     )
+
+    bands_h = []
+    bands_e = []
 
     plt.figure()
 
@@ -66,9 +69,11 @@ def main(coloring="band"):
     elif coloring == "elho":
         # Color by band index
         for band_idx, band in enumerate(eigen_energies.T):
-            plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', color='mediumblue')
+            plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', color='darkblue')
+            bands_e.append(band)
         for band_idx, band in enumerate(eigen_energies_h.T):
-            plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', color='darkred')
+            plt.scatter(bfields, band, s=1.0, label=f'Band {band_idx}', color='orangered')
+            bands_h.append(band)
 
 
     elif coloring == "spin":
@@ -108,26 +113,36 @@ def main(coloring="band"):
         plt.scatter([bfields[idx]] * 2, [dif[3, 2], dif[2, 3]], s=1.0, label=f'Valley')
 
     y_gs_gs = diff[:, 0, 0]  # GS-GS
-    y_nu = np.vstack([diff[:, 1, 0], diff[:, 0, 1]]).T  # ν
-    y_alpha = np.vstack([diff[:, 2, 0], diff[:, 0, 2]]).T  # α
-    y_beta = np.vstack([diff[:, 3, 1], diff[:, 1, 3]]).T  # β
-    y_gamma = np.vstack([diff[:, 3, 0], diff[:, 0, 3], diff[:, 2, 1], diff[:, 1, 2]]).T  # γ
-    y_spin_valley = np.vstack([diff[:, 1, 1], diff[:, 2, 2], diff[:, 3, 3]]).T  # Spin-Valley
-    y_valley = np.vstack([diff[:, 3, 2], diff[:, 2, 3]]).T  # Valley
+    y_nu = diff[:, 1, 0]#np.vstack([diff[:, 1, 0], diff[:, 0, 1]]).T  # ν
+    y_alpha = diff[:, 2, 0]#np.vstack([diff[:, 2, 0], diff[:, 0, 2]]).T  # α
+    #y_beta = np.vstack([diff[:, 3, 1], diff[:, 1, 3]]).T  # β
+    #y_gamma = np.vstack([diff[:, 3, 0], diff[:, 0, 3], diff[:, 2, 1], diff[:, 1, 2]]).T  # γ
+    y_spin_valley = diff[:, 1, 1]#np.vstack([diff[:, 1, 1], diff[:, 2, 2], diff[:, 3, 3]]).T  # Spin-Valley
+    #y_valley = np.vstack([diff[:, 3, 2], diff[:, 2, 3]]).T  # Valley
 
     # Now plot each array against bfields
     plt.figure(figsize=(12, 6))
     plt.scatter(bfields, y_gs_gs, s=1.0, label='GS-GS')
-    plt.scatter(np.repeat(bfields, 2), y_nu.flatten(), s=1.0, label='$\\nu$')
-    plt.scatter(np.repeat(bfields, 2), y_alpha.flatten(), s=1.0, label='$\\alpha$')
-    plt.scatter(np.repeat(bfields, 2), y_beta.flatten(), s=1.0, label='$\\beta$')
-    plt.scatter(np.repeat(bfields, 4), y_gamma.flatten(), s=1.0, label='$\\gamma$')
-    plt.scatter(np.repeat(bfields, 3), y_spin_valley.flatten(), s=1.0, label='Spin-Valley')
-    plt.scatter(np.repeat(bfields, 2), y_valley.flatten(), s=1.0, label='Valley')
+    plt.scatter(bfields, y_nu.flatten(), s=1.0, label='$\\nu$')
+    plt.scatter(bfields, y_alpha.flatten(), s=1.0, label='$\\alpha$')
+    #plt.scatter(np.repeat(bfields, 2), y_beta.flatten(), s=1.0, label='$\\beta$')
+    #plt.scatter(np.repeat(bfields, 4), y_gamma.flatten(), s=1.0, label='$\\gamma$')
+    plt.scatter(bfields, y_spin_valley.flatten(), s=1.0, label='Spin-Valley')
+    #plt.scatter(np.repeat(bfields, 2), y_valley.flatten(), s=1.0, label='Valley')
     plt.xlabel('B-field (T)')
     plt.ylabel('$\Delta E$ (meV)')
     plt.legend(loc='upper right', markerscale=2.5)
     plt.savefig(os.path.join(file_dir, r'energy_diagram_500mT.svg'))
+
+    plt.show()
+
+    np.save(os.path.join(file_dir, 'bands_h.npy'), np.array(bands_h))
+    np.save(os.path.join(file_dir, 'bands_e.npy'), np.array(bands_e))
+    np.save(os.path.join(file_dir, 'bfields.npy'), bfields)
+    np.save(os.path.join(file_dir, 'y_gs_gs.npy'), y_gs_gs)
+    np.save(os.path.join(file_dir, 'y_nu.npy'), y_nu)
+    np.save(os.path.join(file_dir, 'y_alpha.npy'), y_alpha)
+    np.save(os.path.join(file_dir, 'y_spin_valley.npy'), y_spin_valley)
 
 
 if __name__ == "__main__":

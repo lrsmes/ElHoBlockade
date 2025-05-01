@@ -16,7 +16,7 @@ from Data_analysis_and_transforms import correct_median_diff
 
 mpl.rcParams['font.size'] = 18
 
-mu_b = constants.physical_constants['Bohr magneton in eV/T'][0]#*1e6
+mu_b = constants.physical_constants['Bohr magneton in eV/T'][0]*1e6
 
 
 def load_data(files, dir):
@@ -92,7 +92,7 @@ def del_E(x, gs, delta):
 def del_E2(x, gs, delta):
     #return -0.5*gv*mu_b*B_perp + 0.5*np.sqrt((delta - gs * mu_b * B_perp)**2 + (gs * mu_b * x) ** 2)
     #return np.sqrt((delta + 2 * mu_b * x) ** 2 + (2 * mu_b * x) ** 2)
-    return np.sqrt((delta - gs * mu_b * B_perp) ** 2 + (gs * mu_b * x) ** 2)
+    return np.sqrt((delta + gs * mu_b * B_perp) ** 2 + (gs * mu_b * x) ** 2)
 
 def g_lin(x, g, b):
     return 0.5*g*mu_b*x + b
@@ -185,16 +185,19 @@ def linecut_400mT():
 
     dFG = FG14[0][1, 0] - FG14[0][0, 0]
     print(dFG)
-    err = [600*1e-6]*len(diff)
+    err = [600]*len(diff)
     leverarmFG12 = 0.08488 #eV/V
     leverarmFG14 = leverarmFG12*(5.196/5.157)
     a = -0.951128
-    delE = (np.array(diff))*leverarmFG14*np.sqrt(1+(a)**2)#*1e6 #mueV
+    delE = (np.array(diff))*leverarmFG14*np.sqrt(1+(a)**2)*1e6 #mueV
     err = (np.array(err))*leverarmFG14 * np.sqrt(1 + (a) ** 2)
-    print(delE)
+    #print(delE)
 
-    popt, pcov = curve_fit(del_E2, Bpara_peak[6:], delE[6:], sigma=err[6:], p0=[2, -60*1e-6])
-    print(f'g-Factor: {popt[0]}; delta: {popt[1]*1e6}')
+    popt, pcov = curve_fit(del_E, Bpara_peak[6:], delE[6:], p0=[2, 60])#, sigma=err[6:]
+    print(f'g-Factor: {popt[0]}; delta: {popt[1]}')
+    sigma = np.sqrt(np.diag(pcov))
+    print(pcov)
+    print(sigma)
 
     Bx_full = np.linspace(0, 2.3, 1000)
     fig = plt.figure(figsize=(12, 6))
@@ -215,13 +218,18 @@ def linecut_400mT():
     for i, peak in enumerate(delE[6:]):
         plt.scatter(Bpara_peak[i+6], peak)
     #plt.ylim(0, 0.002)
-    plt.plot(Bx_full, del_E2(Bx_full, *popt))
+    plt.plot(Bx_full, del_E(Bx_full, *popt))
     #plt.xlim(0, 2.3)
     plt.show()
 
     np.save(os.path.join(file_dir, 'linecut_400mT_map.npy'), map)
     np.save(os.path.join(file_dir, 'linecut_400mT_Bpara.npy'), Bx[0])
     np.save(os.path.join(file_dir, 'linecut_400mT_FG14.npy'), FG14[0])
+
+    np.save(os.path.join(file_dir, 'linecut_400mT_delE.npy'), delE[6:])
+    np.save(os.path.join(file_dir, 'linecut_400mT_Bpara_peaks.npy'), Bpara_peak[6:])
+    np.save(os.path.join(file_dir, 'linecut_400mT_popt.npy'), popt)
+    np.save(os.path.join(file_dir, 'linecut_400mT_err.npy'), err[6:])
 
     return delE
 
