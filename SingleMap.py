@@ -43,6 +43,7 @@ class SingleMap:
         self.tread = tread
         self.pulse_dir = pulse_dir
         self.comp_fac = None
+        self.comp_fac_y = None
         self.mode = mode
         self.dir = file_dir
         self.horizontal_lines = None
@@ -490,18 +491,18 @@ class SingleMap:
         axs[0].set_title('Transport')
         axs[1].set_title('Blockade')
         plt.tight_layout()
-        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_{reg}_hist.png'))
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_{reg}_hist.png'))
         plt.close()
 
         return mean_trans, std_trans, mean_block, std_block
 
     def save_map(self):
-        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_map.npy'), self.map)
+        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_map.npy'), self.map)
 
         X, Y = np.meshgrid(self.FG14, self.FG12)
 
-        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_FG14.npy'), X)
-        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_FG12.npy'), Y)
+        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_FG14.npy'), X)
+        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_FG12.npy'), Y)
 
 
 
@@ -581,7 +582,7 @@ class SingleMap:
                 ax.scatter(center[0], center[1], color='red', label="Center")
 
 
-        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{int(self.tread)}_map.png'))
+        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_map.png'))
         plt.close()
 
         data = self.map
@@ -631,7 +632,7 @@ class SingleMap:
         edges = canny(self.map, sigma=0.8)  # Adjust sigma for edge sharpness
 
         # Apply probabilistic Hough Transform
-        lines = probabilistic_hough_line(edges, threshold=5, line_length=5, line_gap=45)
+        lines = probabilistic_hough_line(edges, threshold=10, line_length=10, line_gap=30)
 
         # Extract lines based on slope intervals
         lines_interval1 = []  # Red lines
@@ -921,7 +922,7 @@ class SingleMap:
         self.map = correct_median_diff(self.map.T).T
 
         # Compute the derivative along FG14 (axis=1, as FG14 varies along columns)
-        map_derivative = np.gradient(self.map, axis=1)*10**4  # Derivative along FG14
+        map_derivative = np.gradient(self.map, axis=1)#*10**4  # Derivative along FG14
         flattened_derivative = map_derivative.flatten()
 
         # Remove sharp jumps by thresholding extreme values (outliers)
@@ -935,11 +936,21 @@ class SingleMap:
         print(slope)
 
         # Create a linear background to subtract
-        if self.comp_fac:
+        if self.comp_fac and not self.comp_fac_y:
             FG14_slope = self.comp_fac * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
+        elif self.comp_fac_y:
+            FG14_slope = self.comp_fac * (self.FG14 - np.min(self.FG14))
+            FG12_slope = self.comp_fac_y * (self.FG12 - np.min(self.FG12))
         else:
             FG14_slope = slope * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
-        background = np.tile(FG14_slope, (self.map.shape[0], 1))  # Repeat for all rows (FG12)
+
+        # Expand FG14 slope to 2D background
+        background = np.tile(FG14_slope, (self.map.shape[0], 1))  # Repeat for all rows
+
+        # If comp_fac_y is given, add FG12-based background component
+        if self.comp_fac_y:
+            FG12_slope_2D = np.tile(FG12_slope.reshape(-1, 1), (1, self.map.shape[1]))  # Repeat for all columns
+            background += FG12_slope_2D  # Combine both directional backgrounds
 
         #plt.figure()
         #plt.plot(self.FG14, self.map[10, :])
@@ -986,8 +997,10 @@ class SingleMap:
 
         self.map = (self.map - min_bin) / (max_bin - min_bin)
 
-    def set_comp_fac(self, comp_fac):
-        self.comp_fac = comp_fac
+    def set_comp_fac(self, comp_fac_x, comp_fac_y=None):
+        self.comp_fac = comp_fac_x
+        if comp_fac_y:
+            self.comp_fac_y = comp_fac_y
 
     def set_centers(self, center_min, center_max):
         self.centers = [center_min, center_max]

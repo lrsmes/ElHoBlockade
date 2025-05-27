@@ -30,7 +30,7 @@ def calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, de
         H = hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off, bortho_off)
         H_h = -hamiltonian(bfield, theta, deltaSO, deltaKK, deltaSV, gs, gv, 0, bpara_off, bortho_off)
         eigvals, eigvecs = np.linalg.eigh(H)
-        eigvals_h, eigvecs_h = np.linalg.eig(H_h)
+        eigvals_h, eigvecs_h = np.linalg.eigh(H_h)
         eigen_energies.append(eigvals)
         eigen_vectors.append(eigvecs)
         eigen_energies_h.append(eigvals_h)
@@ -45,13 +45,13 @@ def main(coloring="band"):
     deltaSO = -40 * 10 ** -3
     deltaKK = 0.01 * 10 ** -3
     deltaSV = 0.0 * 10 ** -3
-    delta_orb = 1.6
+    delta_orb = 3
     gs = 2.0
     gv = 14
     theta = np.deg2rad(0)
-    bfields = np.arange(-.1, 2.5, 0.01)
+    bfields = np.arange(-.1, 2, 0.01)
     eigen_energies, eigen_vectors, eigen_energies_h, eigen_vectors_h, diff = calc_Bfield_dispersion(
-        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off=0.0, bortho_off=0.4
+        bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, delta_orb, bpara_off=0.0, bortho_off=1
     )
 
     bands_h = []

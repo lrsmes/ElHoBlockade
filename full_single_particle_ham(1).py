@@ -2,6 +2,7 @@ import numpy as np
 from scipy import linalg as la
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import os
 
 mub = 0.05788  # meV/T
 
@@ -82,13 +83,13 @@ def calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv, bp
 
 def main(coloring="band"):
     # Energies in meV
-    deltaSO = -60 * 10 ** -3
-    deltaKK = 0.1 * 10 ** -3
+    deltaSO = -40 * 10 ** -3
+    deltaKK = 0.001 * 10 ** -3
     deltaSV = 0.000 * 10 ** -3
     gs = 2.0
-    gv = 15.0
-    theta = np.deg2rad(90.0)
-    bfields = np.arange(.01, .1, 0.0005)
+    gv = 14.0
+    theta = np.deg2rad(0.0)
+    bfields = np.arange(.01, .1, 0.01)
     print(len(bfields))
     eigen_energies, eigen_vectors = calc_Bfield_dispersion(bfields, theta, deltaSO, deltaKK, deltaSV, gs, gv,
                                                            bpara_off=.0, bortho_off=0.000, hole_fac=-1) # correct for valley or spin projections
@@ -143,21 +144,32 @@ def main(coloring="band"):
     nu1_p = eigen_energies.T[0] - eigen_energies_2.T[3]
     nu2_p = eigen_energies.T[1] - eigen_energies_2.T[2]
     beta = eigen_energies.T[2] - eigen_energies_2.T[0]
-    gamma = eigen_energies.T[3] - eigen_energies_2.T[3]
+    #gamma = eigen_energies.T[3] - eigen_energies_2.T[3]
     plt.figure()
-    plt.scatter(bfields, alpha , s=1.0, label=f'alpha')
+    plt.scatter(bfields, alpha, s=1.0, label=f'alpha')
     plt.scatter(bfields, beta , s=1.0, label=f'beta')
     plt.scatter(bfields, nu1 , s=1.0, label=f'nu1')
     plt.scatter(bfields, nu2, s=1.0, label=f'nu2')
     plt.scatter(bfields, nu1_p, s=1.0, label=f'nu1p')
     plt.scatter(bfields, nu2_p, s=1.0, label=f'nu2p')
-    plt.scatter(bfields, gamma, s=1.0, label=f'gamma')
+    #plt.scatter(bfields, gamma, s=1.0, label=f'gamma')
     plt.xlabel('B-field (T)')
     plt.ylabel('Energy (meV)')
-    plt.legend(loc='upper right')
+    #plt.legend(loc='upper right')
     plt.show()
+
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "figures")
+
+    np.save(os.path.join(file_dir, 'bfields1.npy'), bfields)
+    np.save(os.path.join(file_dir, 'y_alpha1.npy'), alpha)
+    np.save(os.path.join(file_dir, 'y_nu1.npy'), nu1)
+    np.save(os.path.join(file_dir, 'y_nu2.npy'), nu2)
+    np.save(os.path.join(file_dir, 'y_nu1p.npy'), nu1_p)
+    np.save(os.path.join(file_dir, 'y_nu2p.npy'), nu2_p)
+    np.save(os.path.join(file_dir, 'y_beta.npy'), beta)
 
 
 if __name__ == "__main__":
     # You can change "coloring" to "spin" or "valley" to change the coloring mode
-    main(coloring="valley")  # Options: "band", "spin", "valley"
+    main(coloring="spin")  # Options: "band", "spin", "valley"

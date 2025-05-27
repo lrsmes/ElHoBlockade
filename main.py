@@ -1738,6 +1738,204 @@ def both_dir_0T():
     plt.tight_layout()
     plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
 
+
+def both_dir_0T_leon():
+    # Get the current working directory
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "0T_both_dir_leon")
+    file_names = find_hdf5_files(file_dir)
+
+    group = "Data"
+    dataset = "Data/Data"
+    channels = "Data/Channel names"
+
+    ratios_transport = []
+    ratios_err_transport = []
+    ratios_blockade = []
+    ratios_err_blockade = []
+    all_maps_blockade = []
+    all_maps_transport = []
+    single_maps_blockade = []
+    single_maps_transport = []
+
+    for file in file_names:
+        # Load the data in the given file
+        if '427' in file:
+            #all_maps_transport, _ = load_data(file, group, dataset, channels, all_maps_transport, all_maps_blockade)
+            all_maps_transport = load_data_wo_dir(file, group, dataset, channels, all_maps_transport)
+        elif 'blockade_2' in file:#or 'blockade_3' in file:
+            all_maps_blockade = load_data_wo_dir(file, group, dataset, channels, all_maps_blockade)
+
+    ###########
+    # Blockade
+    ###########
+    print('###################### Blockade #########################')
+    for map in all_maps_blockade:
+        print(map[3])
+        map_obj = SingleMap(map[2], map[1], map[0], 1500, map[3], -1, 1, file_dir)
+        single_maps_blockade.append(map_obj)
+
+    single_maps_blockade[0].set_centers((5.338, 5.21), (5.33, 5.22))
+    single_maps_blockade[1].set_centers((5.345, 5.205), (5.325, 5.22))
+    single_maps_blockade[2].set_centers((5.345, 5.205), (5.325, 5.22))
+    single_maps_blockade[3].set_centers((5.345, 5.2), (5.325, 5.22))
+
+
+    for map_obj in single_maps_blockade:
+        map_obj.subtract_background()
+        #map_obj.detect_lines()
+
+    # 1000
+    single_maps_blockade[0].add_horizontal_line(-0.09, 5.2128)
+    single_maps_blockade[0].add_horizontal_line(-0.09, 5.218)
+    single_maps_blockade[0].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[0].add_vertical_line(-1.1, 5.3185)
+
+    # 3419
+    single_maps_blockade[1].add_horizontal_line(-0.09, 5.2108)
+    single_maps_blockade[1].add_horizontal_line(-0.09, 5.216)
+    single_maps_blockade[1].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[1].add_vertical_line(-1.1, 5.3185)
+
+    # 11696
+    single_maps_blockade[2].add_horizontal_line(-0.09, 5.2095)
+    single_maps_blockade[2].add_horizontal_line(-0.09, 5.2146)
+    single_maps_blockade[2].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[2].add_vertical_line(-1.1, 5.3187)
+
+    # 40000
+    single_maps_blockade[3].add_horizontal_line(-0.09, 5.209)
+    single_maps_blockade[3].add_horizontal_line(-0.09, 5.2139)
+    single_maps_blockade[3].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[3].add_vertical_line(-1.1, 5.319)
+
+
+
+    for map_obj in single_maps_blockade:
+        #print(map_obj.get_vertical_lines())
+        map_obj.add_triangle()
+        map_obj.plot_map()
+        map_obj.save_map()
+        ratio, sigma_ratio = map_obj.get_ratio()
+        ratios_blockade.append(ratio)
+        ratios_err_blockade.append(sigma_ratio)
+
+    #############
+    # Transport
+    #############
+    print('###################### Transport #########################')
+    all_maps_transport = all_maps_transport[3:10]
+    for map in all_maps_transport:
+        print(map[3])
+        map_obj = SingleMap(map[2], map[1], map[0], 1500, map[3], 1, 3, file_dir)
+        # map_obj.detect_lines()
+        single_maps_transport.append(map_obj)
+
+    single_maps_transport[0].set_centers((5.34, 5.2065), (5.3475, 5.1975))
+    single_maps_transport[1].set_centers((5.34, 5.2065), (5.3475, 5.1975))
+    single_maps_transport[2].set_centers((5.34, 5.2075), (5.3475, 5.1975))
+    single_maps_transport[3].set_centers((5.34, 5.2075), (5.3475, 5.1975))
+    single_maps_transport[4].set_centers((5.34, 5.2075), (5.3475, 5.1975))
+    single_maps_transport[5].set_centers((5.34, 5.208), (5.3475, 5.2))
+    single_maps_transport[6].set_centers((5.34, 5.208), (5.3475, 5.1975))
+
+    for map_obj in single_maps_transport:
+        map_obj.subtract_background()
+        # map_obj.detect_lines()
+
+
+    for map_obj in single_maps_transport:
+        #map_obj.add_triangle()
+        #map_obj.add_region(-0.005)
+        map_obj.plot_map()
+        map_obj.save_map()
+        #ratio_transport, ratio_err_transport = map_obj.get_ratio()
+        #ratios_transport.append(ratio_transport)
+        #ratios_err_transport.append(ratio_err_transport)
+
+    ########################
+    # Plotting and fitting
+    ########################
+
+    # Blockade
+    plt.figure(figsize=(20, 12))
+    ls = 'dashed'
+    t_read_s = []
+    for elem in all_maps_blockade:
+        t_read_s.append(elem[3])
+    t_read_s = np.array(t_read_s) * 125 * 1e-6
+    print(t_read_s)
+    t_read_s = np.array(t_read_s)
+    ratios_blockade = np.array(ratios_blockade)
+    ratios_err_blockade = np.array(ratios_err_blockade)
+    np.save(os.path.join(file_dir, 'tread_blockade.npy'), t_read_s)
+    np.save(os.path.join(file_dir, 'ratios_blockade.npy'), ratios_blockade)
+    np.save(os.path.join(file_dir, 'ratios_err_blockade.npy'), ratios_err_blockade)
+    plt.scatter(t_read_s, ratios_blockade,
+                facecolors='crimson', edgecolors='black', s=80)
+    # plt.errorbar(t_read_s, ratios_blockade,
+    #             ratios_err_blockade,
+    #             linestyle='None', marker='.',
+    #             color='mediumvioletred', elinewidth=0.5)
+
+    popt, pcov = curve_fit(exponential_model,
+                           ydata=ratios_blockade,
+                           xdata=t_read_s,
+                           sigma=ratios_err_blockade,
+                           p0=[1, 0.5, 0.5])
+
+    # popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
+
+    t = np.linspace(0, max(t_read_s), 100)
+    # print(popt, "\n", pcov)
+    sigma = np.sqrt(np.diag(pcov)[0])
+
+    plt.plot(t, exponential_model(t, *popt),
+             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
+             color='gray', linestyle=ls)
+    plt.legend()
+    plt.ylabel('Intensity ratio')
+    plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    plt.tight_layout()
+    plt.savefig(os.path.join(file_dir, f'exp_fit_blockade.png'))
+
+    # Transport
+
+    # plt.figure(figsize=(20, 12))
+    # ls = 'dashed'
+    # t_read_s = []
+    # for elem in all_maps_transport:
+    #     t_read_s.append(elem[3])
+    # t_read_s = np.array(t_read_s) * 125 * 1e-6
+    # print(t_read_s)
+    # t_read_s = np.array(t_read_s)
+    # ratios_transport = np.array(ratios_transport)
+    # ratios_err_transport = np.array(ratios_err_transport)
+    # np.save(os.path.join(file_dir, 'tread_transport.npy'), t_read_s)
+    # np.save(os.path.join(file_dir, 'ratios_transport.npy'), ratios_transport)
+    # np.save(os.path.join(file_dir, 'ratios_err_transport.npy'), ratios_err_transport)
+    # plt.scatter(t_read_s, ratios_transport,
+    #             facecolors='orangered', edgecolors='black', s=80)
+    #
+    # popt, pcov = curve_fit(exponential_model,
+    #                        ydata=ratios_transport,
+    #                        xdata=t_read_s,
+    #                        sigma=ratios_err_transport,
+    #                        p0=[1, 0.5, 0.5])
+    #
+    # t = np.linspace(0, max(t_read_s), 100)
+    # sigma = np.sqrt(np.diag(pcov)[0])
+    #
+    # plt.plot(t, exponential_model(t, *popt),
+    #          label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
+    #          color='gray', linestyle=ls)
+    # plt.legend()
+    # #plt.ylim(0, 1)
+    # plt.ylabel('Intensity ratio')
+    # plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
+
 def both_dir_1T():
     # Get the current working directory
     current_dir = os.getcwd()
@@ -2345,6 +2543,33 @@ def both_dir_1T():
     plt.tight_layout()
     plt.savefig(os.path.join(file_dir, f'exp_fit_transport1.png'))
 
+def maps_vs_pg13():
+    # Get the current working directory
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "pg13")
+    file_names = find_hdf5_files(file_dir)
+
+    group = "Data"
+    dataset = "Data/Data"
+    channels = "Data/Channel names"
+
+    ratios_blockade = []
+    ratios_err_blockade = []
+    all_maps_blockade = []
+    single_maps_blockade = []
+
+    for file in file_names:
+        # Load the data in the given file
+        all_maps_blockade = load_data_wo_dir(file, group, dataset, channels,
+                                                          all_maps_blockade)
+
+    print('###################### Blockade #########################')
+    for map in all_maps_blockade[1:21]:
+        print(map[3])
+        map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], 1, 1, file_dir)
+        single_maps_blockade.append(map_obj)
+
+
 def delta_x(tread, tini, comp_fac):
     return -0.05*comp_fac*((tread-tini)/(tread+tini))
 
@@ -2362,7 +2587,9 @@ def main():
     #both_dir_500mT()
     #both_dir_400mT()
     #both_dir_0T()
-    both_dir_1T()
+    #both_dir_1T()
+    #both_dir_0T_leon()
+    maps_vs_pg13()
 
 if __name__ == "__main__":
     main()
