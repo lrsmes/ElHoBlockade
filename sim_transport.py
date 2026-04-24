@@ -10,10 +10,10 @@ import time
 
 
 #I time evolve the system in a very large time so that I will be in the ground state. This sets the initial state P0
-t_f0 = 10**10;
+t_f0 = 10**10
 
 #This is the time after the time evolution of the system
-t_f= 4*10**5
+t_f = 4*10**5
 
 Bx = 0;
 gs = 2;
@@ -108,8 +108,8 @@ def fco10(ER, e00, e11, e10, e01, Gr):
 
 def rates(eps, delta_Vl, delta_Vr, Bz=0.4, Bx=0, gs=2, gv=14, soc=0.07, Vbias=0):
     # tunnel rates times electron charge (in pA)
-    Gl = 0.1 * soc / 18 * 17 /25
-    Gr = 0.1 * soc / 18 * 17 /25
+    Gl = 0.1 * soc / 18 * 17 / 25
+    Gr = 0.1 * soc / 18 * 17 / 25
 
     # dephasing rate
     # Gd = 0.575 * soc/3

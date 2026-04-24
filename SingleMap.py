@@ -5,6 +5,7 @@ import seaborn as sns
 import random
 import os
 import math
+import skimage as ski
 from scipy.ndimage import gaussian_filter
 from scipy.signal import detrend
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
@@ -18,6 +19,7 @@ from Data_analysis_and_transforms import correct_median_diff
 from scipy.stats import skewnorm
 from scipy.optimize import curve_fit
 from sklearn.mixture import GaussianMixture
+from matplotlib.path import Path
 
 
 class SingleMap:
@@ -38,6 +40,8 @@ class SingleMap:
         """
         self.FG12 = FG12[0, :] if FG12 is not None else None
         self.FG14 = FG14[:, 0] if FG14 is not None else None
+        self.FG12_map = FG12 if FG12 is not None else None
+        self.FG14_map = FG14 if FG14 is not None else None
         self.map = Demod1R.T if Demod1R is not None else None
         self.tini = tini
         self.tread = tread
@@ -51,8 +55,12 @@ class SingleMap:
         self.transport_triangle = None
         self.blockade_triangle = None
         self.transport_mask = None
+        self.blockade_mask = None
+        self.region_masks = []
         self.transport_vertices = None
+        self.blockade_vertices = None
         self.centers = None
+        self.background_roi = None
         self.regions = []
         self.region_boundaries = []
 
@@ -169,7 +177,7 @@ class SingleMap:
                     x_offset = intercept_main + offset
                     offset_line = None
 
-                hex_blockade = [p1, p2]
+                hex_blockade = [p2, p1]
                 for i in range(3):
                     edge_start, edge_end = triangle1[i], triangle1[(i + 1) % 3]
                     if (edge_end[0] - edge_start[0]) != 0:
@@ -188,8 +196,12 @@ class SingleMap:
                                 min(edge_start[1], edge_end[1]) <= y <= max(edge_start[1], edge_end[1]):
                             hex_blockade.append(intersection)
 
+                self.blockade_vertices = hex_blockade
+
             else:
+                self.blockade_vertices = triangle1
                 hex_blockade = triangle1
+
 
             # Create masks for transport and blockade triangles
             mask_blockade = np.zeros_like(self.map, dtype=float)
@@ -205,9 +217,10 @@ class SingleMap:
             # Set values to NaN outside the defined regions
             self.blockade_triangle = np.array(self.map * mask_blockade)
             self.blockade_triangle[self.blockade_triangle == 0] = np.nan
+            self.blockade_mask = np.array(mask_blockade).astype(bool)
             self.transport_triangle = np.array(self.map * mask_transport)
             self.transport_triangle[self.transport_triangle == 0] = np.nan
-            self.transport_mask = mask_transport
+            self.transport_mask = np.array(mask_transport).astype(bool)
             self.transport_vertices = triangle2
         else:
             # Find intersection points of the lines
@@ -223,6 +236,7 @@ class SingleMap:
             self.blockade_triangle = np.zeros_like(self.map)
             self.transport_triangle = np.zeros_like(self.map)
             self.transport_vertices = intersections
+            self.blockade_vertices = intersections
 
         #plt.figure()
         #plt.imshow(self.blockade_triangle)
@@ -273,129 +287,301 @@ class SingleMap:
                 self.regions.append(self.map * region)
         """
 
+    # def add_region(self, offset):
+    #     """
+    #     Add a custom region to the map, defined by the offset line
+    #     intersecting the edges of a triangle.
+    #
+    #     Parameters:
+    #         offset (float): Offset to create the parallel line.
+    #     """
+    #     if self.transport_vertices is None or len(self.transport_vertices) < 3:
+    #         print("Insufficient transport vertices to define a triangle.")
+    #         return
+    #     if self.region_boundaries:
+    #         #triangle = [*self.region_boundaries[-1], self.transport_vertices[2]]
+    #         p1, p2 = self.region_boundaries[-1][0], self.region_boundaries[-1][1]
+    #     else:
+    #         p1, p2 = self.transport_vertices[0], self.transport_vertices[1]
+    #
+    #     triangle = self.transport_vertices  # Assume the first three vertices form the triangle
+    #
+    #     # Define the main line equation (slope and intercept)
+    #     if (p2[0] - p1[0]) != 0:
+    #         slope_main = (p2[1] - p1[1]) / (p2[0] - p1[0])
+    #         intercept_main = p1[1] - slope_main * p1[0]
+    #     else:
+    #         slope_main = None  # Vertical line
+    #         intercept_main = p1[0]  # Use x-intercept for vertical line
+    #
+    #     # Define the offset line
+    #     if slope_main is not None:
+    #         slope_offset = slope_main
+    #         intercept_offset = intercept_main + offset
+    #         offset_line = (slope_offset, intercept_offset)
+    #     else:
+    #         # Vertical line offset
+    #         x_offset = intercept_main + offset
+    #         offset_line = None
+    #
+    #     # Find intersection points between the offset line and triangle edges
+    #     intersections = []
+    #     for i in range(3):
+    #         edge_start, edge_end = triangle[i], triangle[(i + 1) % 3]
+    #
+    #         # Calculate the slope and intercept of the current edge
+    #         if (edge_end[0] - edge_start[0]) != 0:
+    #             slope_edge = (edge_end[1] - edge_start[1]) / (edge_end[0] - edge_start[0])
+    #             intercept_edge = edge_start[1] - slope_edge * edge_start[0]
+    #             edge_line = (slope_edge, intercept_edge)
+    #
+    #             # Find intersection
+    #             if offset_line is not None:
+    #                 intersection = find_intersection(offset_line, edge_line)
+    #             else:
+    #                 # Vertical line intersection
+    #                 x_intersection = x_offset
+    #                 y_intersection = slope_edge * x_intersection + intercept_edge
+    #                 intersection = (x_intersection, y_intersection)
+    #         else:
+    #             # Edge is vertical
+    #             x_intersection = edge_start[0]
+    #             if offset_line is not None:
+    #                 y_intersection = slope_offset * x_intersection + intercept_offset
+    #             else:
+    #                 # Both lines are vertical, no intersection
+    #                 intersection = None
+    #                 continue
+    #             intersection = (x_intersection, y_intersection)
+    #
+    #         # Check if intersection is within the bounds of the edge
+    #         if intersection:
+    #             x, y = intersection
+    #             if min(edge_start[0], edge_end[0]) <= x <= max(edge_start[0], edge_end[0]) and \
+    #                     min(edge_start[1], edge_end[1]) <= y <= max(edge_start[1], edge_end[1]):
+    #                 intersections.append(intersection)
+    #
+    #     # Ensure we have two valid intersection points
+    #     if len(intersections) < 2:
+    #         print("Offset line does not properly intersect the triangle.")
+    #         return
+    #
+    #     parallelogram = [p1, p2, intersections[0], intersections[1]]
+    #     smaller_triangle = [p1, p2, self.transport_vertices[2]]
+    #     #parallelogram = sorted(parallelogram, key=lambda p: (p[0], p[1]))
+    #
+    #     if self.mode == 2:
+    #         # Create region between the last region boundary and offset line
+    #         region = np.zeros_like(self.map, dtype=float)
+    #         for i, x in enumerate(self.FG14):
+    #             for j, y in enumerate(self.FG12):
+    #                 if is_point_in_polygon(x, y, parallelogram):
+    #                     y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
+    #                     if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
+    #                         region[j, i] = 1.0
+    #
+    #         # Update regions and map
+    #         self.region_boundaries.append(intersections)
+    #         self.regions.append(self.map * region)
+    #         self.regions[-1][self.regions[-1] == 0] = np.nan
+    #
+    #     elif self.mode == 3:
+    #         region = np.zeros_like(self.map, dtype=float)
+    #         for i, x in enumerate(self.FG14):
+    #             for j, y in enumerate(self.FG12):
+    #                 if is_point_in_polygon(x, y, smaller_triangle):
+    #                     y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
+    #                     if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
+    #                         region[j, i] = 1.0
+    #
+    #         # Update regions and map
+    #         self.region_boundaries.append(intersections)
+    #         self.transport_triangle = np.array(self.map * region)
+    #         self.transport_triangle[self.transport_triangle == 0] = np.nan
+
     def add_region(self, offset):
         """
-        Add a custom region to the map, defined by the offset line
-        intersecting the edges of a triangle.
+        Add a custom region based on an offset line intersecting a defined triangle.
+        Positive offset applies to blockade_vertices, negative to transport_vertices.
 
         Parameters:
-            offset (float): Offset to create the parallel line.
+            offset (float): Offset value; sign determines target region.
         """
-        if self.transport_vertices is None or len(self.transport_vertices) < 3:
-            print("Insufficient transport vertices to define a triangle.")
-            return
-        if self.region_boundaries:
-            #triangle = [*self.region_boundaries[-1], self.transport_vertices[2]]
-            p1, p2 = self.region_boundaries[-1][0], self.region_boundaries[-1][1]
+        if offset > 0:
+            if self.blockade_vertices is None or len(self.blockade_vertices) < 3:
+                print("Insufficient blockade vertices to define a triangle.")
+                return
+            if self.region_boundaries:
+                p1, p2 = self.region_boundaries[-1][1], self.region_boundaries[-1][2]
+            else:
+                p1, p2 = self.blockade_vertices[1], self.blockade_vertices[2]
+            vertices = self.blockade_vertices
         else:
-            p1, p2 = self.transport_vertices[0], self.transport_vertices[1]
+            if self.transport_vertices is None or len(self.transport_vertices) < 3:
+                print("Insufficient transport vertices to define a triangle.")
+                return
+            if self.region_boundaries:
+                p1, p2 = self.region_boundaries[-1][0], self.region_boundaries[-1][1]
+            else:
+                p1, p2 = self.transport_vertices[0], self.transport_vertices[1]
+            vertices = self.transport_vertices
 
-        triangle = self.transport_vertices  # Assume the first three vertices form the triangle
 
-        # Define the main line equation (slope and intercept)
+
         if (p2[0] - p1[0]) != 0:
             slope_main = (p2[1] - p1[1]) / (p2[0] - p1[0])
             intercept_main = p1[1] - slope_main * p1[0]
         else:
-            slope_main = None  # Vertical line
-            intercept_main = p1[0]  # Use x-intercept for vertical line
+            slope_main = None
+            intercept_main = p1[0]
 
-        # Define the offset line
         if slope_main is not None:
             slope_offset = slope_main
             intercept_offset = intercept_main + offset
             offset_line = (slope_offset, intercept_offset)
         else:
-            # Vertical line offset
             x_offset = intercept_main + offset
             offset_line = None
 
-        # Find intersection points between the offset line and triangle edges
         intersections = []
         for i in range(3):
-            edge_start, edge_end = triangle[i], triangle[(i + 1) % 3]
-
-            # Calculate the slope and intercept of the current edge
+            edge_start, edge_end = vertices[i], vertices[(i + 1) % 3]
             if (edge_end[0] - edge_start[0]) != 0:
                 slope_edge = (edge_end[1] - edge_start[1]) / (edge_end[0] - edge_start[0])
                 intercept_edge = edge_start[1] - slope_edge * edge_start[0]
                 edge_line = (slope_edge, intercept_edge)
-
-                # Find intersection
-                if offset_line is not None:
-                    intersection = find_intersection(offset_line, edge_line)
-                else:
-                    # Vertical line intersection
-                    x_intersection = x_offset
-                    y_intersection = slope_edge * x_intersection + intercept_edge
-                    intersection = (x_intersection, y_intersection)
+                intersection = find_intersection(offset_line, edge_line) if offset_line else (
+                x_offset, slope_edge * x_offset + intercept_edge)
             else:
-                # Edge is vertical
                 x_intersection = edge_start[0]
-                if offset_line is not None:
-                    y_intersection = slope_offset * x_intersection + intercept_offset
-                else:
-                    # Both lines are vertical, no intersection
-                    intersection = None
-                    continue
-                intersection = (x_intersection, y_intersection)
+                y_intersection = slope_offset * x_intersection + intercept_offset if offset_line else None
+                intersection = (x_intersection, y_intersection) if y_intersection is not None else None
 
-            # Check if intersection is within the bounds of the edge
             if intersection:
                 x, y = intersection
                 if min(edge_start[0], edge_end[0]) <= x <= max(edge_start[0], edge_end[0]) and \
                         min(edge_start[1], edge_end[1]) <= y <= max(edge_start[1], edge_end[1]):
                     intersections.append(intersection)
 
-        # Ensure we have two valid intersection points
         if len(intersections) < 2:
             print("Offset line does not properly intersect the triangle.")
             return
 
-        parallelogram = [p1, p2, intersections[0], intersections[1]]
-        smaller_triangle = [p1, p2, self.transport_vertices[2]]
-        #parallelogram = sorted(parallelogram, key=lambda p: (p[0], p[1]))
+        # Build region based on mode
+        region = np.zeros_like(self.map, dtype=float)
 
         if self.mode == 2:
-            # Create region between the last region boundary and offset line
-            region = np.zeros_like(self.map, dtype=float)
+            # Parallelogram between offset line and triangle edge
+            parallelogram = [p1, p2, intersections[0], intersections[1]]
             for i, x in enumerate(self.FG14):
                 for j, y in enumerate(self.FG12):
                     if is_point_in_polygon(x, y, parallelogram):
                         y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
-                        if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
+                        if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1],
+                                                                                               y_new):
                             region[j, i] = 1.0
-
-            # Update regions and map
             self.region_boundaries.append(intersections)
             self.regions.append(self.map * region)
+            self.region_masks.append(region)
             self.regions[-1][self.regions[-1] == 0] = np.nan
 
         elif self.mode == 3:
-            region = np.zeros_like(self.map, dtype=float)
+            # Smaller triangle using vertex[2] and p1, p2
+            if offset > 0:
+                smaller_triangle = [p1, p2, vertices[0]]
+            elif offset < 0:
+                smaller_triangle = [vertices[2], p2, p1]
             for i, x in enumerate(self.FG14):
                 for j, y in enumerate(self.FG12):
                     if is_point_in_polygon(x, y, smaller_triangle):
+                        region[j, i] = 1.0
+
+            if offset > 0:
+                self.region_boundaries.append(intersections)
+                self.blockade_triangle = self.map * region
+                self.blockade_triangle[self.blockade_triangle == 0] = np.nan
+            elif offset < 0:
+                self.region_boundaries.append(intersections)
+                self.regions.append(self.map * region)
+                self.region_masks.append(region)
+                self.regions[-1][self.regions[-1] == 0] = np.nan
+
+        elif self.mode == 4:
+            # Smaller triangle using vertex[2] and p1, p2
+            region_triangle = np.zeros_like(self.map, dtype=float)
+            region_para = np.zeros_like(self.map, dtype=float)
+            if offset < 0:
+                smaller_triangle = [intersections[0], vertices[2], intersections[1]]
+                parallelogram = [p1, p2, intersections[0], intersections[1]]
+
+            for i, x in enumerate(self.FG14):
+                for j, y in enumerate(self.FG12):
+                    if is_point_in_polygon(x, y, smaller_triangle):
+                        region_triangle[j, i] = 1.0
+
+                    if is_point_in_polygon(x, y, parallelogram):
+                        region_para[j, i] = 1.0
+
+            if offset < 0:
+                self.region_boundaries.append(intersections)
+                self.regions.append(self.map * region_para)
+                self.region_masks.append(region_para)
+                self.regions[-1][self.regions[-1] == 0] = np.nan
+                self.regions.append(self.map * region_triangle)
+                self.region_masks.append(region_triangle)
+                self.regions[-1][self.regions[-1] == 0] = np.nan
+
+        else:
+            # Default behavior (original)
+            parallelogram = [p1, p2, intersections[0], intersections[1]]
+            for i, x in enumerate(self.FG14):
+                for j, y in enumerate(self.FG12):
+                    if is_point_in_polygon(x, y, parallelogram):
                         y_new = slope_offset * x + intercept_offset if slope_offset is not None else None
-                        if y_new and min(intersections[0][1], intersections[1][1]) <= y <= max(intersections[0][1], y_new):
+                        if y_new is not None and min(intersections[0][1], intersections[1][1]) <= y <= max(
+                                intersections[0][1], y_new):
                             region[j, i] = 1.0
 
-            # Update regions and map
             self.region_boundaries.append(intersections)
-            self.transport_triangle = np.array(self.map * region)
-            self.transport_triangle[self.transport_triangle == 0] = np.nan
 
+            if offset > 0:
+                self.blockade_triangle = self.map * region
+                self.blockade_triangle[self.blockade_triangle == 0] = np.nan
+                self.blockade_vertices = parallelogram
+            else:
+                self.transport_triangle = self.map * region
+                self.transport_triangle[self.transport_triangle == 0] = np.nan
+                self.transport_vertices = parallelogram
 
-    def get_ratio(self):
+        self.region_masks = np.array(self.region_masks).astype(bool)
+
+        #print(self.blockade_triangle.flatten())
+        #print(self.transport_triangle.flatten())
+
+    def get_ratio(self, radius=3):
         """
         Calculate the ratio and uncertainties based on the mode.
 
         Returns:
             tuple: Depending on the mode, returns different ratio and uncertainty values.
         """
-        blockade_flatten = self.blockade_triangle.flatten()
+
+        footprint = ski.morphology.disk(radius)
+
+        if self.region_masks is not None:
+            self.region_masks = [
+                ski.morphology.erosion(mask, footprint)
+                for mask in self.region_masks
+            ]
+
+        self.transport_mask = ski.morphology.erosion(self.transport_mask, footprint)
+        self.blockade_mask = ski.morphology.erosion(self.blockade_mask, footprint)
+
+
+
+        blockade_flatten = self.blockade_triangle[self.blockade_mask].flatten()
         if self.mode == 1 or self.mode == 3:
-            transport_flatten = self.transport_triangle.flatten()
+            transport_flatten = self.transport_triangle[self.transport_mask].flatten()
 
             # Calculate ratio and uncertainty
             # ratio = np.nanmean(transport_flatten) / np.nanmean(blockade_flatten)
@@ -403,6 +589,7 @@ class SingleMap:
             #         (np.nanstd(transport_flatten) / np.nanmean(transport_flatten)) ** 2 +
             #         (np.nanstd(blockade_flatten) / np.nanmean(blockade_flatten)) ** 2
             # ))
+
 
             mean_trans, std_trans, mean_block, std_block = self.make_histogram(transport_flatten, blockade_flatten)
 
@@ -428,11 +615,12 @@ class SingleMap:
 
             return ratio, uncertainty
 
-        elif self.mode == 2:
+        elif self.mode == 2 or self.mode == 4:
             ratios = []
             uncertainties = []
             for i, region in enumerate(self.regions):
-                region_flatten = region.flatten()
+                region_flatten = region[self.region_masks[i]].flatten()
+                #region.flatten()
                 # region_mean = np.nanmean(region_flatten) / np.nanmean(blockade_flatten)
                 # uncertainty = np.sqrt(region_mean ** 2 * (
                 #         (np.nanstd(region_flatten) / np.nanmean(region_flatten)) ** 2 +
@@ -469,34 +657,46 @@ class SingleMap:
         shape_trans, loc_trans, scale_trans = skewnorm.fit(data_trans, 10, loc=0.5, scale=0.25)
         shape_block, loc_block, scale_block = skewnorm.fit(data_block, 10, loc=0.5, scale=0.25)
 
-        # Compute mean and standard deviation using fitted parameters
-        mean_trans = skewnorm.mean(shape_trans, loc=loc_trans, scale=scale_trans)
-        std_trans = skewnorm.std(shape_trans, loc=loc_trans, scale=scale_trans)
+        # # Compute mean and standard deviation using fitted parameters
+        # mean_trans = skewnorm.mean(shape_trans, loc=loc_trans, scale=scale_trans)
+        # std_trans = skewnorm.std(shape_trans, loc=loc_trans, scale=scale_trans)
+        #
+        # mean_block = skewnorm.mean(shape_block, loc=loc_block, scale=scale_block)
+        # std_block = skewnorm.std(shape_block, loc=loc_block, scale=scale_block)
 
-        mean_block = skewnorm.mean(shape_block, loc=loc_block, scale=scale_block)
-        std_block = skewnorm.std(shape_block, loc=loc_block, scale=scale_block)
+        # Compute mean and standard deviation using fitted parameters
+        mean_trans = data_trans[data_trans > 0].mean() #np.mean(data_trans)
+        std_trans = data_trans[data_trans > 0].std() #np.std(data_trans)
+
+        mean_block = data_block[data_block > 0].mean()#np.mean(data_block)
+        std_block = data_block[data_block > 0].std() #np.std(data_block)
 
         # Plot histogram and fitted distribution
-        x_trans = np.linspace(min(data_trans), max(data_block), 300)
-        x_block = np.linspace(min(data_trans), max(data_block), 300)
-        pdf_trans = skewnorm.pdf(x_trans, shape_trans, loc=loc_trans, scale=scale_trans)
-        pdf_block = skewnorm.pdf(x_block, shape_block, loc=loc_block, scale=scale_block)
-
-        fig, axs = plt.subplots(1, 2)
-        axs[0].hist(data_trans, bins=30, density=True)
-        axs[1].hist(data_block, bins=30, density=True)
-        x = np.linspace(10, 1, 300)
-        axs[0].plot(x_trans, pdf_trans)
-        axs[1].plot(x_block, pdf_block)
-        axs[0].set_title('Transport')
-        axs[1].set_title('Blockade')
-        plt.tight_layout()
-        plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_{reg}_hist.png'))
-        plt.close()
+        # x_trans = np.linspace(min(data_trans), max(data_block), 300)
+        # x_block = np.linspace(min(data_trans), max(data_block), 300)
+        # pdf_trans = skewnorm.pdf(x_trans, shape_trans, loc=loc_trans, scale=scale_trans)
+        # pdf_block = skewnorm.pdf(x_block, shape_block, loc=loc_block, scale=scale_block)
+        #
+        # fig, axs = plt.subplots(1, 2)
+        # axs[0].hist(data_trans, bins=30, density=True)
+        # axs[1].hist(data_block, bins=30, density=True)
+        # x = np.linspace(10, 1, 300)
+        # axs[0].plot(x_trans, pdf_trans)
+        # axs[1].plot(x_block, pdf_block)
+        # axs[0].set_title('Transport')
+        # axs[1].set_title('Blockade')
+        # plt.tight_layout()
+        # plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_{reg}_hist.png'))
+        # plt.close()
 
         return mean_trans, std_trans, mean_block, std_block
 
     def save_map(self):
+        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread)}_blockade_triangle.npy'),
+                self.blockade_triangle.flatten())
+        np.save(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread)}_transport_triangle.npy'),
+                self.transport_triangle.flatten())
+
         np.save(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_map.npy'), self.map)
 
         X, Y = np.meshgrid(self.FG14, self.FG12)
@@ -517,7 +717,7 @@ class SingleMap:
 
         # Plot the 2D map using pcolormesh
         X, Y = np.meshgrid(self.FG14, self.FG12)
-        c1 = ax.pcolormesh(X, Y, self.map, cmap="viridis_r", shading="auto", rasterized=True)#, vmin=0, vmax=1)
+        c1 = ax.pcolormesh(X, Y, self.map, cmap="viridis_r", shading="auto", rasterized=True, vmin=-0.2, vmax=1.2)
 
         # Add a colorbar to the figure
         #cbar_ax = fig.add_axes([0.85, 0.75, 0.03, 0.2])
@@ -620,6 +820,109 @@ class SingleMap:
         plt.xlabel('Value')
         plt.ylabel('Frequency')
         """
+
+        # Plot region masks
+        if self.region_masks is not None:
+            for i, map in enumerate(self.region_masks):
+                plt.figure(figsize=(12, 8))
+                plt.pcolormesh(X, Y, map, cmap='gray')
+
+                # axis limits
+                plt.ylim(np.min(self.FG12), np.max(self.FG12))
+                plt.xlim(np.min(self.FG14), np.max(self.FG14))
+
+                # Add optional features (lines, vertices, regions)
+                if self.vertical_lines or self.horizontal_lines:
+                    for m, b in self.vertical_lines:
+                        plt.plot(self.FG14, m * self.FG14 + b,
+                                label="Line")  # Plot lines using slope (m) and intercept (b)
+                    for m, b in self.horizontal_lines:
+                        plt.plot(self.FG14, m * self.FG14 + b,
+                                label="Line")  # Plot lines using slope (m) and intercept (b)
+
+                if self.transport_vertices:
+                    vertices = np.array(self.transport_vertices)
+                    plt.scatter(vertices[:, 0], vertices[:, 1], color="red", label="Transport Vertices")  # Plot vertices
+                    plt.plot(vertices[:2, 0], vertices[:2, 1], "r--", label="Diagonal")
+
+                if self.region_boundaries:
+                    for region in self.region_boundaries:
+                        vertices = np.array(region)  # Assuming regions store vertices as lists of (x, y)
+                        plt.plot(vertices[:, 0], vertices[:, 1], "r--",
+                                label="Region Boundary")  # Plot region boundaries
+
+                plt.savefig(os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_mask_region_{i}.png'))
+                plt.close()
+
+        # Plot blockade mask
+        if self.blockade_mask is not None:
+            plt.figure(figsize=(12, 8))
+            plt.pcolormesh(X, Y, self.blockade_mask, cmap='gray')
+
+            # axis limits
+            plt.ylim(np.min(self.FG12), np.max(self.FG12))
+            plt.xlim(np.min(self.FG14), np.max(self.FG14))
+
+            # Add optional features (lines, vertices, regions)
+            if self.vertical_lines or self.horizontal_lines:
+                for m, b in self.vertical_lines:
+                    plt.plot(self.FG14, m * self.FG14 + b,
+                             label="Line")  # Plot lines using slope (m) and intercept (b)
+                for m, b in self.horizontal_lines:
+                    plt.plot(self.FG14, m * self.FG14 + b,
+                             label="Line")  # Plot lines using slope (m) and intercept (b)
+
+            if self.transport_vertices:
+                vertices = np.array(self.transport_vertices)
+                plt.scatter(vertices[:, 0], vertices[:, 1], color="red",
+                            label="Transport Vertices")  # Plot vertices
+                plt.plot(vertices[:2, 0], vertices[:2, 1], "r--", label="Diagonal")
+
+            if self.region_boundaries:
+                for region in self.region_boundaries:
+                    vertices = np.array(region)  # Assuming regions store vertices as lists of (x, y)
+                    plt.plot(vertices[:, 0], vertices[:, 1], "r--",
+                             label="Region Boundary")  # Plot region boundaries
+
+            plt.savefig(
+                os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_mask_blockade.png'))
+            plt.close()
+
+        # Plot transport mask
+        if self.transport_mask is not None:
+            plt.figure(figsize=(12, 8))
+            plt.pcolormesh(X, Y, self.transport_mask, cmap='gray')
+
+            # axis limits
+            plt.ylim(np.min(self.FG12), np.max(self.FG12))
+            plt.xlim(np.min(self.FG14), np.max(self.FG14))
+
+            # Add optional features (lines, vertices, regions)
+            if self.vertical_lines or self.horizontal_lines:
+                for m, b in self.vertical_lines:
+                    plt.plot(self.FG14, m * self.FG14 + b,
+                             label="Line")  # Plot lines using slope (m) and intercept (b)
+                for m, b in self.horizontal_lines:
+                    plt.plot(self.FG14, m * self.FG14 + b,
+                             label="Line")  # Plot lines using slope (m) and intercept (b)
+
+            if self.transport_vertices:
+                vertices = np.array(self.transport_vertices)
+                plt.scatter(vertices[:, 0], vertices[:, 1], color="red",
+                            label="Transport Vertices")  # Plot vertices
+                plt.plot(vertices[:2, 0], vertices[:2, 1], "r--", label="Diagonal")
+
+            if self.region_boundaries:
+                for region in self.region_boundaries:
+                    vertices = np.array(region)  # Assuming regions store vertices as lists of (x, y)
+                    plt.plot(vertices[:, 0], vertices[:, 1], "r--",
+                             label="Region Boundary")  # Plot region boundaries
+
+            plt.savefig(
+                os.path.join(self.dir, f'{self.pulse_dir}_{round(self.tread, 2)}_mask_transport.png'))
+            plt.close()
+
+
         #plt.show()
 
     def detect_lines(self, slope_interval1=(-18, -8), slope_interval2=(-0.9, -0.6), slope_diag=(0.93, 1.08),
@@ -911,60 +1214,63 @@ class SingleMap:
     def subtract_background(self):
         """
         Subtract a polynomial background from the map and normalize the result.
+        Use evaluate_poly_background_2d for evaluating the polynaominal backgraound.
         """
-
-        # Define polynomial background subtraction
-        #for i, col in enumerate(self.FG14):
-        #    self.map[:, i] -= self.comp_fac * col
-        #   self.map[:, i] = detrend(self.map[:, i])
-
+    #
+    #     # Define polynomial background subtraction
+    #     #for i, col in enumerate(self.FG14):
+    #     #    self.map[:, i] -= self.comp_fac * col
+    #     #   self.map[:, i] = detrend(self.map[:, i])
+    #
         # Subtract median difference between consecutive rows
         self.map = correct_median_diff(self.map.T).T
-
-        # Compute the derivative along FG14 (axis=1, as FG14 varies along columns)
-        map_derivative = np.gradient(self.map, axis=1)#*10**4  # Derivative along FG14
-        flattened_derivative = map_derivative.flatten()
-
-        # Remove sharp jumps by thresholding extreme values (outliers)
-        valid_derivatives = flattened_derivative[
-            (flattened_derivative < np.percentile(flattened_derivative, 80)) &
-            (flattened_derivative > np.percentile(flattened_derivative, 20))
-            ]
-
-        # Calculate the slope as the mean of the valid derivatives
-        slope = np.median(valid_derivatives)
-        print(slope)
-
-        # Create a linear background to subtract
-        if self.comp_fac and not self.comp_fac_y:
-            FG14_slope = self.comp_fac * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
-        elif self.comp_fac_y:
-            FG14_slope = self.comp_fac * (self.FG14 - np.min(self.FG14))
-            FG12_slope = self.comp_fac_y * (self.FG12 - np.min(self.FG12))
-        else:
-            FG14_slope = slope * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
-
-        # Expand FG14 slope to 2D background
-        background = np.tile(FG14_slope, (self.map.shape[0], 1))  # Repeat for all rows
-
-        # If comp_fac_y is given, add FG12-based background component
-        if self.comp_fac_y:
-            FG12_slope_2D = np.tile(FG12_slope.reshape(-1, 1), (1, self.map.shape[1]))  # Repeat for all columns
-            background += FG12_slope_2D  # Combine both directional backgrounds
-
-        #plt.figure()
-        #plt.plot(self.FG14, self.map[10, :])
-        #plt.plot(self.FG14, average_slope * self.FG14 - 0.002)
-        #plt.title('Original')
-        #plt.show()
-
-        # Subtract the background from the map
-        self.map -= background
-
-        # Remove outliers by clipping to a percentile range
-        lower_percentile = np.percentile(self.map, 2)  # 2nd percentile
-        upper_percentile = np.percentile(self.map, 98)  # 98th percentile
-        self.map = np.clip(self.map, lower_percentile, upper_percentile)
+    #
+    #     # Compute the derivative along FG14 (axis=1, as FG14 varies along columns)
+    #     map_derivative = np.gradient(self.map, axis=1)*10**4  # Derivative along FG14
+    #     flattened_derivative = map_derivative.flatten()
+    #
+    #     # Remove sharp jumps by thresholding extreme values (outliers)
+    #     valid_derivatives = flattened_derivative[
+    #         (flattened_derivative < np.percentile(flattened_derivative, 80)) &
+    #         (flattened_derivative > np.percentile(flattened_derivative, 20))
+    #         ]
+    #
+    #     # Calculate the slope as the mean of the valid derivatives
+    #     slope = np.median(valid_derivatives)
+    #     print(slope)
+    #
+    #     # Create a linear background to subtract
+    #     if self.comp_fac and not self.comp_fac_y:
+    #         FG14_slope = self.comp_fac * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
+    #     elif self.comp_fac_y:
+    #         FG14_slope = self.comp_fac * (self.FG14 - np.min(self.FG14))
+    #         FG12_slope = self.comp_fac_y * (self.FG12 - np.min(self.FG12))
+    #     else:
+    #         FG14_slope = slope * (self.FG14 - np.min(self.FG14))  # Linear trend along FG14
+    # #
+    #     # Expand FG14 slope to 2D background
+    #     background = np.tile(FG14_slope, (self.map.shape[0], 1))  # Repeat for all rows
+    #
+    #     print(background)
+    #
+    #     # If comp_fac_y is given, add FG12-based background component
+    #     if self.comp_fac_y:
+    #         FG12_slope_2D = np.tile(FG12_slope.reshape(-1, 1), (1, self.map.shape[1]))  # Repeat for all columns
+    #         background += FG12_slope_2D  # Combine both directional backgrounds
+    #
+    #     #plt.figure()
+    #     #plt.plot(self.FG14, self.map[10, :])
+    #     #plt.plot(self.FG14, average_slope * self.FG14 - 0.002)
+    #     #plt.title('Original')
+    #     #plt.show()
+    #
+    #     # Subtract the background from the map
+    #     self.map -= background
+    #
+    #     # Remove outliers by clipping to a percentile range
+    #     lower_percentile = np.percentile(self.map, 2)  # 2nd percentile
+    #     upper_percentile = np.percentile(self.map, 98)  # 98th percentile
+    #     self.map = np.clip(self.map, lower_percentile, upper_percentile)
 
         #plt.figure()
         #plt.plot(self.FG14, self.map[10, :])
@@ -973,6 +1279,11 @@ class SingleMap:
 
         # Apply Gaussian filter for smoothing (if needed)
         #self.map = gaussian_filter(self.map, sigma=(0.5, 0.5))
+        if self.background_roi is not None:
+            background = evaluate_poly_background_2d(self.FG14_map, self.FG12_map, self.map.T,
+                                                     1, 1, self.background_roi[0], self.background_roi[1])
+
+            self.map -= background.T
 
         # Normalize the map
         if self.centers:
@@ -983,14 +1294,28 @@ class SingleMap:
 
             for i, x in enumerate(self.FG14):
                 for j, y in enumerate(self.FG12):
-                    if is_point_in_circle(x, y, center_min, 0.001):
+                    if is_point_in_circle(x, y, center_min, 0.002):
                         circle_min.append(self.map[j, i])
-                    if is_point_in_circle(x, y, center_max, 0.001):
+                    if is_point_in_circle(x, y, center_max, 0.002):
                         circle_max.append(self.map[j, i])
 
-            min_bin = np.mean(circle_min)
-            max_bin = np.mean(circle_max)
+            circle_min = np.array(circle_min)
+            circle_max = np.array(circle_max)
+
+            valid_min = circle_min[
+                (circle_min < np.percentile(circle_min, 95)) &
+                (circle_min > np.percentile(circle_min, 5))
+                ]
+
+            valid_max = circle_max[
+                (circle_max < np.percentile(circle_max, 95)) &
+                (circle_max > np.percentile(circle_max, 5))
+                ]
+
+            min_bin = np.mean(valid_min)
+            max_bin = np.mean(valid_max)
             print(min_bin, max_bin)
+
         else:
             min_bin = np.min(self.map)
             max_bin = np.max(self.map)
@@ -1004,6 +1329,9 @@ class SingleMap:
 
     def set_centers(self, center_min, center_max):
         self.centers = [center_min, center_max]
+
+    def set_background_roi(self, x_range, y_range):
+        self.background_roi = np.array([x_range, y_range])
 
 
 def find_intersection(line1, line2):
@@ -1042,14 +1370,19 @@ def is_point_in_polygon(x, y, vertices):
     Returns:
         bool: True if the point is inside the polygon, False otherwise.
     """
-    num_vertices = len(vertices)
-    inside = False
-    for i in range(num_vertices):
-        v1 = vertices[i]
-        v2 = vertices[(i + 1) % num_vertices]
-        if ((v1[1] > y) != (v2[1] > y)) and \
-                (x < (v2[0] - v1[0]) * (y - v1[1]) / (v2[1] - v1[1]) + v1[0]):
-            inside = not inside
+    # num_vertices = len(vertices)
+    # inside = False
+    # for i in range(num_vertices):
+    #     v1 = vertices[i]
+    #     v2 = vertices[(i + 1) % num_vertices]
+    #     if ((v1[1] > y) != (v2[1] > y)) and \
+    #             (x < (v2[0] - v1[0]) * (y - v1[1]) / (v2[1] - v1[1]) + v1[0]):
+    #         inside = not inside
+    # return inside
+
+    path = Path(vertices)
+    inside = path.contains_point((x, y))
+
     return inside
 
 
@@ -1101,5 +1434,77 @@ def is_point_in_circle(x, y, center, radius):
 
     # If the distance is less than or equal to the radius, the point is inside or on the circle
     return distance <= radius
+
+def evaluate_poly_background_2d(x, y, z, order_x, order_y,
+                                       x_range=None, y_range=None):
+    '''
+    Evaluates a polynomial background from a restricted region and applies it to the full dataset.
+
+    This function fits a polynomial of specified orders to a defined region of data,
+    then applies that background model to the entire dataset.
+
+    :param x: 2D array of x coordinates
+    :param y: 2D array of y coordinates
+    :param z: 2D array of z values at each (x, y) point
+    :param order_x: Integer specifying the order of the polynomial in the x-direction
+    :param order_y: Integer specifying the order of the polynomial in the y-direction
+    :param x_range: Tuple (xmin, xmax) defining the x range for fitting, or None to use all data
+    :param y_range: Tuple (ymin, ymax) defining the y range for fitting, or None to use all data
+    :return: 2D numpy array of the calculated background for the full dataset
+    '''
+
+    # print("x min/max:", x.min(), x.max())
+    # print("y min/max:", y.min(), y.max())
+    # print("x_range:", x_range)
+    # print("y_range:", y_range)
+
+    assert x.shape == y.shape == z.shape, "x, y, and z must have the same shape"
+
+    # Flatten the arrays
+    x_flat = x.flatten()
+    y_flat = y.flatten()
+    z_flat = z.flatten()
+
+    # Create mask for the region of interest
+    mask = np.ones_like(x_flat, dtype=bool)
+
+    if x_range is not None:
+        x_min, x_max = x_range
+        mask &= (x_flat >= x_min) & (x_flat <= x_max)
+
+    if y_range is not None:
+        y_min, y_max = y_range
+        mask &= (y_flat >= y_min) & (y_flat <= y_max)
+
+    # Filter points to only those in the region of interest
+    x_roi = x_flat[mask]
+    y_roi = y_flat[mask]
+    z_roi = z_flat[mask]
+
+    if len(x_roi) == 0:
+        raise ValueError("No data points in the specified region!")
+
+    # Generate the design matrix for the polynomial terms (for ROI only)
+    A_roi = np.zeros((x_roi.size, (order_x + 1) * (order_y + 1)))
+    for i in range(order_x + 1):
+        for j in range(order_y + 1):
+            A_roi[:, i * (order_y + 1) + j] = (x_roi ** i) * (y_roi ** j)
+
+    # Solve the least squares problem for the ROI
+    coeffs, residuals, rank, s = np.linalg.lstsq(A_roi, z_roi, rcond=None)
+
+    print(coeffs)
+
+    # Now generate design matrix for the ENTIRE dataset
+    A_full = np.zeros((x_flat.size, (order_x + 1) * (order_y + 1)))
+    for i in range(order_x + 1):
+        for j in range(order_y + 1):
+            A_full[:, i * (order_y + 1) + j] = (x_flat ** i) * (y_flat ** j)
+
+    # Apply the coefficients to the entire dataset
+    background_flat = A_full @ coeffs
+    background = background_flat.reshape(x.shape)
+
+    return background
 
 

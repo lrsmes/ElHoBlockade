@@ -7,12 +7,12 @@ import time
 
 
 #I time evolve the system in a very large time so that I will be in the ground state. This sets the initial state P0
-t_f0 = 10**10;
+t_f0 = 10**10
 
 #This is the time after the time evolution of the system
-t_f= 10*10**5
+t_f = 4*10**5
 
-Bx = 0.4;
+Bx = 0;
 gs = 2;
 gv = 14;
 soc = 0.07;
@@ -175,7 +175,7 @@ def rates(eps, delta_Vl, delta_Vr, Bz=0.4, Bx=0, gs=2, gv=14, soc=0.07, Vbias=0)
                 o += vh[ih][s] * ve[ie][s]
                 ovf += vh[ih][s%LD] * ve[ie][(s+2)%LD]
             olap[ih, ie] = o ** 2
-            olap_vf[ih,ie] = ovf ** 2
+            olap_vf[ih, ie] = ovf ** 2
 
     # (0,0) -> (-1, 1)
 
@@ -356,5 +356,3 @@ plt.colorbar()
 plt.show()
 # plt.savefig(f't_f={t_f}')
 # plt.clf()
-
-

@@ -1,13 +1,14 @@
 import math
 import os
-import autograd.numpy as np
+import numpy as np
 import hdf5_helper as helper
 import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.optimize import curve_fit
 from scipy.signal import savgol_filter
 from scipy.stats import skewnorm
-from utils import substract_linear_BG, define_resonances_tp, get_value_range, get_single_map, find_hdf5_files, get_slopes, exponential_model
+from utils import substract_linear_BG, define_resonances_tp, get_value_range, get_single_map, find_hdf5_files, \
+    get_slopes, exponential_model, double_exponential_model
 from scipy import constants
 from auto_fit import fit_with_derivative
 from SingleMap import SingleMap
@@ -1097,7 +1098,7 @@ def both_dir_400mT():
     single_maps_transport[13].set_centers((5.182, 5.261), (5.175, 5.2800))
     single_maps_transport[14].set_centers((5.182, 5.261), (5.175, 5.2800))
     single_maps_transport[15].set_centers((5.182, 5.261), (5.1775, 5.275))
-    single_maps_transport[16].set_centers((5.1825, 5.262), (5.1775, 5.275))
+    single_maps_transport[16].set_centers((5.182, 5.26), (5.1775, 5.275))
     single_maps_transport[17].set_centers((5.185, 5.265), (5.1775, 5.2775))
     single_maps_transport[18].set_centers((5.185, 5.265), (5.175, 5.2775))
     single_maps_transport[19].set_centers((5.185, 5.263), (5.1775, 5.2775))
@@ -1109,103 +1110,103 @@ def both_dir_400mT():
 
     # 880
     single_maps_transport[0].add_vertical_line(-11, 5.1728)
-    single_maps_transport[0].add_vertical_line(-11, 5.1773)
+    single_maps_transport[0].add_vertical_line(-11, 5.1775)
     single_maps_transport[0].add_horizontal_line(-0.85, 5.2771)
     single_maps_transport[0].add_horizontal_line(-0.85, 5.2855)
 
     # 1560
-    single_maps_transport[1].add_vertical_line(-11, 5.1737)
-    single_maps_transport[1].add_vertical_line(-11, 5.1782)
-    single_maps_transport[1].add_horizontal_line(-0.85, 5.2758)
+    single_maps_transport[1].add_vertical_line(-11, 5.1738)
+    single_maps_transport[1].add_vertical_line(-11, 5.1783)
+    single_maps_transport[1].add_horizontal_line(-0.85, 5.2759)
     single_maps_transport[1].add_horizontal_line(-0.85, 5.2841)
 
     # 2240
-    single_maps_transport[2].add_vertical_line(-11, 5.1745)
-    single_maps_transport[2].add_vertical_line(-11, 5.1787)
-    single_maps_transport[2].add_horizontal_line(-0.85, 5.275)
-    single_maps_transport[2].add_horizontal_line(-0.85, 5.2833)
+    single_maps_transport[2].add_vertical_line(-11, 5.1743)
+    single_maps_transport[2].add_vertical_line(-11, 5.1789)
+    single_maps_transport[2].add_horizontal_line(-0.85, 5.2752)
+    single_maps_transport[2].add_horizontal_line(-0.85, 5.2835)
 
     # 2920
-    single_maps_transport[3].add_vertical_line(-11, 5.1745)
-    single_maps_transport[3].add_vertical_line(-11, 5.1791)
+    single_maps_transport[3].add_vertical_line(-11, 5.1747)
+    single_maps_transport[3].add_vertical_line(-11, 5.1792)
     single_maps_transport[3].add_horizontal_line(-0.85, 5.2749)
-    single_maps_transport[3].add_horizontal_line(-0.85, 5.283)
+    single_maps_transport[3].add_horizontal_line(-0.85, 5.2829)
 
     # 3600
-    single_maps_transport[4].add_vertical_line(-11, 5.175)
+    single_maps_transport[4].add_vertical_line(-11, 5.1750)
     single_maps_transport[4].add_vertical_line(-11, 5.1795)
-    single_maps_transport[4].add_horizontal_line(-0.85, 5.2742)
-    single_maps_transport[4].add_horizontal_line(-0.85, 5.2821)
+    single_maps_transport[4].add_horizontal_line(-0.85, 5.2743)
+    single_maps_transport[4].add_horizontal_line(-0.85, 5.2823)
 
     # 4280
     single_maps_transport[5].add_vertical_line(-11, 5.1751)
-    single_maps_transport[5].add_vertical_line(-11, 5.1797)
+    single_maps_transport[5].add_vertical_line(-11, 5.1796)
     single_maps_transport[5].add_horizontal_line(-0.85, 5.2738)
-    single_maps_transport[5].add_horizontal_line(-0.85, 5.2821)
+    single_maps_transport[5].add_horizontal_line(-0.85, 5.2820)
 
     # 4960
     single_maps_transport[6].add_vertical_line(-11, 5.1753)
-    single_maps_transport[6].add_vertical_line(-11, 5.1798)
+    single_maps_transport[6].add_vertical_line(-11, 5.1797)
     single_maps_transport[6].add_horizontal_line(-0.85, 5.2737)
     single_maps_transport[6].add_horizontal_line(-0.85, 5.2816)
 
     # 5640
-    single_maps_transport[7].add_vertical_line(-11, 5.1754)
+    single_maps_transport[7].add_vertical_line(-11, 5.1755)
     single_maps_transport[7].add_vertical_line(-11, 5.1799)
     single_maps_transport[7].add_horizontal_line(-0.85, 5.2735)
-    single_maps_transport[7].add_horizontal_line(-0.85, 5.2815)
+    single_maps_transport[7].add_horizontal_line(-0.85, 5.2816)
 
     # 6320
-    single_maps_transport[8].add_vertical_line(-11, 5.1756)
+    single_maps_transport[8].add_vertical_line(-11, 5.1757)
     single_maps_transport[8].add_vertical_line(-11, 5.1801)
     single_maps_transport[8].add_horizontal_line(-0.85, 5.2734)
     single_maps_transport[8].add_horizontal_line(-0.85, 5.2814)
 
     # 7000
-    single_maps_transport[9].add_vertical_line(-11, 5.1756)
-    single_maps_transport[9].add_vertical_line(-11, 5.1803)
+    single_maps_transport[9].add_vertical_line(-11, 5.1758)
+    single_maps_transport[9].add_vertical_line(-11, 5.1802)
     single_maps_transport[9].add_horizontal_line(-0.85, 5.2733)
     single_maps_transport[9].add_horizontal_line(-0.85, 5.2814)
 
     # 1000
-    single_maps_transport[10].add_vertical_line(-11, 5.1733)
-    single_maps_transport[10].add_vertical_line(-11, 5.1777)
+    single_maps_transport[10].add_vertical_line(-11, 5.1734)
+    single_maps_transport[10].add_vertical_line(-11, 5.1778)
     single_maps_transport[10].add_horizontal_line(-0.85, 5.2749)
     single_maps_transport[10].add_horizontal_line(-0.85, 5.2829)
 
     # 2950
     single_maps_transport[11].add_vertical_line(-11, 5.1749)
-    single_maps_transport[11].add_vertical_line(-11, 5.1792)
+    single_maps_transport[11].add_vertical_line(-11, 5.1794)
     single_maps_transport[11].add_horizontal_line(-0.85, 5.2725)
-    single_maps_transport[11].add_horizontal_line(-0.85, 5.2804)
+    single_maps_transport[11].add_horizontal_line(-0.85, 5.2806)
 
     # 4900
     single_maps_transport[12].add_vertical_line(-11, 5.1756)
-    single_maps_transport[12].add_vertical_line(-11, 5.1799)
+    single_maps_transport[12].add_vertical_line(-11, 5.18)
     single_maps_transport[12].add_horizontal_line(-0.85, 5.2717)
-    single_maps_transport[12].add_horizontal_line(-0.85, 5.2796)
+    single_maps_transport[12].add_horizontal_line(-0.85, 5.2797)
 
     # 6850
     single_maps_transport[13].add_vertical_line(-11, 5.1758)
-    single_maps_transport[13].add_vertical_line(-11, 5.1802)
+    single_maps_transport[13].add_vertical_line(-11, 5.1803)
     single_maps_transport[13].add_horizontal_line(-0.85, 5.2711)
-    single_maps_transport[13].add_horizontal_line(-0.85, 5.2791)
+    single_maps_transport[13].add_horizontal_line(-0.85, 5.2790)
 
     # 8800
-    single_maps_transport[14].add_vertical_line(-11, 5.176)
+    single_maps_transport[14].add_vertical_line(-11, 5.1761)
     single_maps_transport[14].add_vertical_line(-11, 5.1804)
-    single_maps_transport[14].add_horizontal_line(-0.85, 5.2706)
+    single_maps_transport[14].add_horizontal_line(-0.85, 5.2707)
     single_maps_transport[14].add_horizontal_line(-0.85, 5.2787)
 
     # 10750
     single_maps_transport[15].add_vertical_line(-11, 5.1762)
-    single_maps_transport[15].add_vertical_line(-11, 5.1804)
+    single_maps_transport[15].add_vertical_line(-11, 5.1805)
     single_maps_transport[15].add_horizontal_line(-0.85, 5.2704)
-    single_maps_transport[15].add_horizontal_line(-0.85, 5.2784)
+    single_maps_transport[15].add_horizontal_line(-0.85, 5.2783)
 
     # 12700
     single_maps_transport[16].add_vertical_line(-11, 5.1763)
-    single_maps_transport[16].add_vertical_line(-11, 5.1806)
+    single_maps_transport[16].add_vertical_line(-11, 5.1808)
     single_maps_transport[16].add_horizontal_line(-0.85, 5.2704)
     single_maps_transport[16].add_horizontal_line(-0.85, 5.2783)
 
@@ -1229,17 +1230,16 @@ def both_dir_400mT():
 
     # 20500
     single_maps_transport[20].add_vertical_line(-11, 5.1776)
-    single_maps_transport[20].add_vertical_line(-11, 5.1819)
-    single_maps_transport[20].add_horizontal_line(-0.85, 5.2751)
-    single_maps_transport[20].add_horizontal_line(-0.85, 5.2834)
+    single_maps_transport[20].add_vertical_line(-11, 5.1821)
+    single_maps_transport[20].add_horizontal_line(-0.85, 5.2753)
+    single_maps_transport[20].add_horizontal_line(-0.85, 5.2833)
 
 
 
     for map_obj in single_maps_transport:
         map_obj.add_triangle()
         map_obj.add_region(-0.0012)
-        map_obj.add_region(-0.002)
-        map_obj.add_region(-0.0025)
+        map_obj.add_region(-0.0044)
         map_obj.plot_map()
         map_obj.save_map()
         ratio_transport, ratio_err_transport = map_obj.get_ratio()
@@ -1307,7 +1307,7 @@ def both_dir_400mT():
     np.save(os.path.join(file_dir, 'ratios_transport.npy'), ratios_transport)
     np.save(os.path.join(file_dir, 'ratios_err_transport.npy'), ratios_err_transport)
 
-    plt.scatter(t_read_s, ratios_transport[:, 2],
+    plt.scatter(t_read_s, ratios_transport[:, 0],
                  facecolors='none', edgecolors='orangered')
 
     plt.scatter(t_read_s, ratios_transport[:, 1],
@@ -1321,21 +1321,21 @@ def both_dir_400mT():
 
     sigma1 = np.sqrt(np.diag(pcov1))
 
-    plt.plot(t, exponential_model(t, *popt1),
-             label=rf'$\tau_b$ : {popt1[0]} $\pm$ {sigma1}$\mu$s',
-             color='gray', linestyle=ls, alpha=0.8)
-
-    popt2, pcov2 = curve_fit(exponential_model,
-                           ydata=ratios_transport[:, 2],
-                           xdata=t_read_s[:],
-                           sigma=ratios_err_transport[:, 2],
-                           p0=[1, 0.5, 0.5])
-
-    sigma2 = np.sqrt(np.diag(pcov2))
-
-    plt.plot(t, exponential_model(t, *popt2),
-             label=rf'$\tau_b$ : {popt2[0]} $\pm$ {sigma2}$\mu$s',
-             color='gray', linestyle=ls, alpha=0.8)
+    # plt.plot(t, exponential_model(t, *popt1),
+    #          label=rf'$\tau_b$ : {popt1[0]} $\pm$ {sigma1}$\mu$s',
+    #          color='gray', linestyle=ls, alpha=0.8)
+    #
+    # popt2, pcov2 = curve_fit(exponential_model,
+    #                        ydata=ratios_transport[:, 2],
+    #                        xdata=t_read_s[:],
+    #                        sigma=ratios_err_transport[:, 2],
+    #                        p0=[1, 0.5, 0.5])
+    #
+    # sigma2 = np.sqrt(np.diag(pcov2))
+    #
+    # plt.plot(t, exponential_model(t, *popt2),
+    #          label=rf'$\tau_b$ : {popt2[0]} $\pm$ {sigma2}$\mu$s',
+    #          color='gray', linestyle=ls, alpha=0.8)
 
 
     plt.legend()
@@ -1381,22 +1381,39 @@ def both_dir_0T():
         map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], 1, 1, file_dir)
         single_maps_blockade.append(map_obj)
 
-    single_maps_blockade[0].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[1].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[2].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[3].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[4].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[5].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[6].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[7].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[8].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[9].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[10].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[11].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[12].set_centers((5.1825, 5.285), (5.1850, 5.2725))
-    single_maps_blockade[13].set_centers((5.1845, 5.283), (5.1850, 5.2725))
-    single_maps_blockade[14].set_centers((5.1835, 5.284), (5.1850, 5.2725))
-    single_maps_blockade[15].set_centers((5.1825, 5.284), (5.1850, 5.2725))
+    single_maps_blockade[0].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[1].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[2].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[3].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[4].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[5].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[6].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[7].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[8].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[9].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[10].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[11].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[12].set_centers((5.1775, 5.285), (5.18775, 5.2725))
+    single_maps_blockade[13].set_centers((5.1775, 5.283), (5.18775, 5.2725))
+    single_maps_blockade[14].set_centers((5.1775, 5.284), (5.18775, 5.2725))
+    single_maps_blockade[15].set_centers((5.1775, 5.284), (5.18775, 5.2725))
+
+    single_maps_blockade[0].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[1].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[2].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[3].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[4].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[5].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[6].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[7].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[8].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[9].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[10].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[11].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[12].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[13].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[14].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
+    single_maps_blockade[15].set_background_roi((5.1825, 5.1875), (5.2675, 5.2725))
 
     for map_obj in single_maps_blockade:
         map_obj.subtract_background()
@@ -1503,7 +1520,7 @@ def both_dir_0T():
         #print(map_obj.get_vertical_lines())
         map_obj.add_triangle()
         map_obj.plot_map()
-        #map_obj.save_map()
+        map_obj.save_map()
         ratio, sigma_ratio = map_obj.get_ratio()
         ratios_blockade.append(ratio)
         ratios_err_blockade.append(sigma_ratio)
@@ -1537,6 +1554,24 @@ def both_dir_0T():
     single_maps_transport[14].set_centers((5.180, 5.2775), (5.1750, 5.2930))
     single_maps_transport[15].set_centers((5.180, 5.2775), (5.1750, 5.2930))
     single_maps_transport[16].set_centers((5.180, 5.2775), (5.1750, 5.2930))
+
+    single_maps_transport[0].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[1].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[2].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[3].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[4].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[5].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[6].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[7].set_background_roi((5.1700, 5.1750), (5.2775, 5.2825))
+    single_maps_transport[8].set_background_roi((5.1700, 5.1750), (5.2775, 5.2825))
+    single_maps_transport[9].set_background_roi((5.1700, 5.1750), (5.2775, 5.2825))
+    single_maps_transport[10].set_background_roi((5.1700, 5.1750), (5.2775, 5.2825))
+    single_maps_transport[11].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[12].set_background_roi((5.1700, 5.1740), (5.2775, 5.2825))
+    single_maps_transport[13].set_background_roi((5.1700, 5.1735), (5.2775, 5.2815))
+    single_maps_transport[14].set_background_roi((5.1700, 5.1735), (5.2775, 5.2815))
+    single_maps_transport[15].set_background_roi((5.1700, 5.1735), (5.2775, 5.2815))
+    single_maps_transport[16].set_background_roi((5.1700, 5.1735), (5.2775, 5.2815))
 
 
 
@@ -1650,7 +1685,7 @@ def both_dir_0T():
         map_obj.add_triangle()
         map_obj.add_region(-0.005)
         map_obj.plot_map()
-        #map_obj.save_map()
+        map_obj.save_map()
         ratio_transport, ratio_err_transport = map_obj.get_ratio()
         ratios_transport.append(ratio_transport)
         ratios_err_transport.append(ratio_err_transport)
@@ -1664,6 +1699,342 @@ def both_dir_0T():
     ls = 'dashed'
     t_read_s = []
     for elem in all_maps_blockade[1:]:
+        t_read_s.append(elem[3])
+    t_read_s = np.array(t_read_s) * 125 * 1e-6
+    print(t_read_s)
+    t_read_s = np.array(t_read_s)
+    ratios_blockade = np.array(ratios_blockade)
+    ratios_err_blockade = np.array(ratios_err_blockade)
+    np.save(os.path.join(file_dir, 'tread_blockade.npy'), t_read_s)
+    np.save(os.path.join(file_dir, 'ratios_blockade.npy'), ratios_blockade)
+    np.save(os.path.join(file_dir, 'ratios_err_blockade.npy'), ratios_err_blockade)
+    plt.scatter(t_read_s, ratios_blockade,
+                facecolors='crimson', edgecolors='black', s=80)
+    # plt.errorbar(t_read_s, ratios_blockade,
+    #             ratios_err_blockade,
+    #             linestyle='None', marker='.',
+    #             color='mediumvioletred', elinewidth=0.5)
+
+    popt, pcov = curve_fit(exponential_model,
+                           ydata=ratios_blockade,
+                           xdata=t_read_s,
+                           sigma=ratios_err_blockade,
+                           p0=[1, 0.5, 0.1])
+
+    # popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
+
+    t = np.linspace(0, max(t_read_s), 100)
+    # print(popt, "\n", pcov)
+    sigma = np.sqrt(np.diag(pcov)[0])
+
+    plt.plot(t, exponential_model(t, *popt),
+             label=rf'$\tau_b$ : {popt[1]} $\pm$ {sigma}$\mu$s',
+             color='gray', linestyle=ls)
+    plt.legend()
+    plt.ylabel('Intensity ratio')
+    plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    plt.ylim(1e-1, 1)
+    plt.yscale('log')
+    #plt.xscale('log')
+    plt.tight_layout()
+    plt.savefig(os.path.join(file_dir, f'exp_fit_blockade.png'))
+
+    # Transport
+
+    plt.figure(figsize=(20, 12))
+    ls = 'dashed'
+    t_read_s = []
+    for elem in all_maps_transport:
+        t_read_s.append(elem[3])
+    t_read_s = np.array(t_read_s) * 125 * 1e-6
+    print(t_read_s)
+    t_read_s = np.array(t_read_s)
+    ratios_transport = np.array(ratios_transport)
+    ratios_err_transport = np.array(ratios_err_transport)
+    np.save(os.path.join(file_dir, 'tread_transport.npy'), t_read_s)
+    np.save(os.path.join(file_dir, 'ratios_transport.npy'), ratios_transport)
+    np.save(os.path.join(file_dir, 'ratios_err_transport.npy'), ratios_err_transport)
+    plt.scatter(t_read_s, ratios_transport,
+                facecolors='orangered', edgecolors='black', s=80)
+
+    popt, pcov = curve_fit(exponential_model,
+                           ydata=ratios_transport,
+                           xdata=t_read_s,
+                           sigma=ratios_err_transport,
+                           p0=[1, 0.5, 0.1])
+
+    t = np.linspace(0, max(t_read_s), 100)
+    sigma = np.sqrt(np.diag(pcov)[0])
+
+    plt.plot(t, exponential_model(t, *popt),
+             label=rf'$\tau_b$ : {popt[1]} $\pm$ {sigma}$\mu$s',
+             color='gray', linestyle=ls)
+    plt.legend()
+    plt.ylim(1e-1, 1)
+    plt.ylabel('Intensity ratio')
+    plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    plt.yscale('log')
+    plt.tight_layout()
+    plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
+
+
+def both_dir_0T_leon():
+    # Get the current working directory
+    current_dir = os.getcwd()
+    file_dir = os.path.join(current_dir, "0T_both_dir_leon")
+    file_names = find_hdf5_files(file_dir)
+
+    group = "Data"
+    dataset = "Data/Data"
+    channels = "Data/Channel names"
+
+    ratios_transport = []
+    ratios_err_transport = []
+    ratios_blockade = []
+    ratios_err_blockade = []
+    all_maps_blockade = []
+    all_maps_transport = []
+    single_maps_blockade = []
+    single_maps_transport = []
+
+    for file in file_names:
+        # Load the data in the given file
+        if '427' in file:
+            #all_maps_transport, _ = load_data(file, group, dataset, channels, all_maps_transport, all_maps_blockade)
+            all_maps_transport = load_data_wo_dir(file, group, dataset, channels, all_maps_transport)
+        elif 'blockade_2' in file: #or 'blockade_3' in file:
+            all_maps_blockade = load_data_wo_dir(file, group, dataset, channels, all_maps_blockade)
+        elif 'blockade_3' in file:
+            all_maps_blockade = load_data_wo_dir(file, group, dataset, channels, all_maps_blockade)
+        elif 'both_dirs' in file:
+            all_maps_transport, all_maps_blockade = load_data(file, group, dataset, channels,
+                                                              all_maps_transport, all_maps_blockade)
+
+    ###########
+    # Blockade
+    ###########
+    print('###################### Blockade #########################')
+    for map in all_maps_blockade[:6]:
+        print('tread:')
+        print(map[3])
+        map_obj = SingleMap(map[2], map[1], map[0], 1500, map[3], -1, 1, file_dir)
+        single_maps_blockade.append(map_obj)
+
+    single_maps_blockade[0].set_centers((5.338, 5.21), (5.33, 5.22))
+    single_maps_blockade[1].set_centers((5.345, 5.205), (5.325, 5.22))
+    single_maps_blockade[2].set_centers((5.345, 5.205), (5.325, 5.22))
+    single_maps_blockade[3].set_centers((5.345, 5.2), (5.325, 5.22))
+    single_maps_blockade[4].set_centers((5.345, 5.2), (5.328, 5.215))
+    single_maps_blockade[5].set_centers((5.345, 5.2), (5.328, 5.215))
+
+
+    for map_obj in single_maps_blockade:
+        map_obj.subtract_background()
+        #map_obj.detect_lines()
+
+    # 1000
+    single_maps_blockade[0].add_horizontal_line(-0.09, 5.2128)
+    single_maps_blockade[0].add_horizontal_line(-0.09, 5.218)
+    single_maps_blockade[0].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[0].add_vertical_line(-1.1, 5.3185)
+
+    # 3419
+    single_maps_blockade[1].add_horizontal_line(-0.09, 5.2108)
+    single_maps_blockade[1].add_horizontal_line(-0.09, 5.216)
+    single_maps_blockade[1].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[1].add_vertical_line(-1.1, 5.3185)
+
+    # 11696
+    single_maps_blockade[2].add_horizontal_line(-0.09, 5.2095)
+    single_maps_blockade[2].add_horizontal_line(-0.09, 5.2146)
+    single_maps_blockade[2].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[2].add_vertical_line(-1.1, 5.3187)
+
+    # 40000
+    single_maps_blockade[3].add_horizontal_line(-0.09, 5.209)
+    single_maps_blockade[3].add_horizontal_line(-0.09, 5.2139)
+    single_maps_blockade[3].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[3].add_vertical_line(-1.1, 5.319)
+
+    # 20000
+    single_maps_blockade[4].add_horizontal_line(-0.09, 5.209)
+    single_maps_blockade[4].add_horizontal_line(-0.09, 5.2141)
+    single_maps_blockade[4].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[4].add_vertical_line(-1.1, 5.319)
+
+    # 30000
+    single_maps_blockade[5].add_horizontal_line(-0.09, 5.209)
+    single_maps_blockade[5].add_horizontal_line(-0.09, 5.2141)
+    single_maps_blockade[5].add_vertical_line(-1.1, 5.328)
+    single_maps_blockade[5].add_vertical_line(-1.1, 5.319)
+
+
+
+    for map_obj in single_maps_blockade:
+        #print(map_obj.get_vertical_lines())
+        map_obj.add_triangle()
+        map_obj.plot_map()
+        map_obj.save_map()
+        ratio, sigma_ratio = map_obj.get_ratio()
+        ratios_blockade.append(ratio)
+        ratios_err_blockade.append(sigma_ratio)
+
+    #############
+    # Transport
+    #############
+    print('###################### Transport #########################')
+    all_maps_transport = all_maps_transport[3:20]
+    for map in all_maps_transport:
+        print(map[3])
+        map_obj = SingleMap(map[2], map[1], map[0], 1500, map[3], 1, 3, file_dir)
+        # map_obj.detect_lines()
+        single_maps_transport.append(map_obj)
+
+    single_maps_transport[0].set_centers((5.34, 5.2065), (5.3475, 5.2))
+    single_maps_transport[1].set_centers((5.34, 5.2065), (5.3475, 5.2))
+    single_maps_transport[2].set_centers((5.34, 5.2075), (5.3475, 5.2))
+    single_maps_transport[3].set_centers((5.34, 5.2075), (5.3475, 5.2))
+    single_maps_transport[4].set_centers((5.34, 5.2075), (5.3475, 5.2))
+    single_maps_transport[5].set_centers((5.34, 5.208), (5.3475, 5.2))
+    single_maps_transport[6].set_centers((5.34, 5.208), (5.3475, 5.2))
+    single_maps_transport[7].set_centers((5.34, 5.2065), (5.35, 5.2))
+    single_maps_transport[8].set_centers((5.34, 5.2065), (5.35, 5.2))
+    single_maps_transport[9].set_centers((5.34, 5.2067), (5.35, 5.2))
+    single_maps_transport[10].set_centers((5.34, 5.207), (5.35, 5.2))
+    single_maps_transport[11].set_centers((5.34, 5.208), (5.35, 5.2))
+    single_maps_transport[12].set_centers((5.34, 5.208), (5.3475, 5.2))
+    single_maps_transport[13].set_centers((5.34, 5.2085), (5.3475, 5.2))
+    single_maps_transport[14].set_centers((5.3375, 5.21), (5.3475, 5.2))
+    single_maps_transport[15].set_centers((5.3375, 5.211), (5.3475, 5.2))
+    single_maps_transport[16].set_centers((5.3375, 5.211), (5.3475, 5.2))
+
+    for map_obj in single_maps_transport:
+        map_obj.subtract_background()
+        # map_obj.detect_lines()
+
+    # 270
+    single_maps_transport[0].add_horizontal_line(-0.09, 5.2009)
+    single_maps_transport[0].add_horizontal_line(-0.09, 5.206)
+    single_maps_transport[0].add_vertical_line(-1.1, 5.3329)
+    single_maps_transport[0].add_vertical_line(-1.1, 5.3425)
+
+    # 325
+    single_maps_transport[1].add_horizontal_line(-0.09, 5.201)
+    single_maps_transport[1].add_horizontal_line(-0.09, 5.2062)
+    single_maps_transport[1].add_vertical_line(-1.1, 5.3328)
+    single_maps_transport[1].add_vertical_line(-1.1, 5.3425)
+
+    # 380
+    single_maps_transport[2].add_horizontal_line(-0.09, 5.2014)
+    single_maps_transport[2].add_horizontal_line(-0.09, 5.2065)
+    single_maps_transport[2].add_vertical_line(-1.1, 5.333)
+    single_maps_transport[2].add_vertical_line(-1.1, 5.3425)
+
+    # 435
+    single_maps_transport[3].add_horizontal_line(-0.09, 5.2015)
+    single_maps_transport[3].add_horizontal_line(-0.09, 5.2066)
+    single_maps_transport[3].add_vertical_line(-1.1, 5.3331)
+    single_maps_transport[3].add_vertical_line(-1.1, 5.3425)
+
+    # 490
+    single_maps_transport[4].add_horizontal_line(-0.09, 5.2018)
+    single_maps_transport[4].add_horizontal_line(-0.09, 5.2068)
+    single_maps_transport[4].add_vertical_line(-1.1, 5.3332)
+    single_maps_transport[4].add_vertical_line(-1.1, 5.3426)
+    
+    # 545
+    single_maps_transport[5].add_horizontal_line(-0.09, 5.202)
+    single_maps_transport[5].add_horizontal_line(-0.09, 5.207)
+    single_maps_transport[5].add_vertical_line(-1.1, 5.3331)
+    single_maps_transport[5].add_vertical_line(-1.1, 5.3426)
+
+    # 600
+    single_maps_transport[6].add_horizontal_line(-0.09, 5.2022)
+    single_maps_transport[6].add_horizontal_line(-0.09, 5.2072)
+    single_maps_transport[6].add_vertical_line(-1.1, 5.3335)
+    single_maps_transport[6].add_vertical_line(-1.1, 5.3426)
+
+    # 200
+    single_maps_transport[7].add_horizontal_line(-0.09, 5.201)
+    single_maps_transport[7].add_horizontal_line(-0.09, 5.206)
+    single_maps_transport[7].add_vertical_line(-1.1, 5.328)
+    single_maps_transport[7].add_vertical_line(-1.1, 5.338)
+
+    # 260
+    single_maps_transport[8].add_horizontal_line(-0.09, 5.2011)
+    single_maps_transport[8].add_horizontal_line(-0.09, 5.2062)
+    single_maps_transport[8].add_vertical_line(-1.1, 5.328)
+    single_maps_transport[8].add_vertical_line(-1.1, 5.338)
+
+    # 340
+    single_maps_transport[9].add_horizontal_line(-0.09, 5.2015)
+    single_maps_transport[9].add_horizontal_line(-0.09, 5.207)
+    single_maps_transport[9].add_vertical_line(-1.1, 5.328)
+    single_maps_transport[9].add_vertical_line(-1.1, 5.338)
+
+
+    # 443
+    single_maps_transport[10].add_horizontal_line(-0.09, 5.202)
+    single_maps_transport[10].add_horizontal_line(-0.09, 5.207)
+    single_maps_transport[10].add_vertical_line(-1.1, 5.3285)
+    single_maps_transport[10].add_vertical_line(-1.1, 5.338)
+
+    # 577
+    single_maps_transport[11].add_horizontal_line(-0.09, 5.2025)
+    single_maps_transport[11].add_horizontal_line(-0.09, 5.2078)
+    single_maps_transport[11].add_vertical_line(-1.1, 5.329)
+    single_maps_transport[11].add_vertical_line(-1.1, 5.338)
+
+    # 752
+    single_maps_transport[12].add_horizontal_line(-0.09, 5.203)
+    single_maps_transport[12].add_horizontal_line(-0.09, 5.208)
+    single_maps_transport[12].add_vertical_line(-1.1, 5.329)
+    single_maps_transport[12].add_vertical_line(-1.1, 5.338)
+
+    # 980
+    single_maps_transport[13].add_horizontal_line(-0.09, 5.2035)
+    single_maps_transport[13].add_horizontal_line(-0.09, 5.2085)
+    single_maps_transport[13].add_vertical_line(-1.1, 5.329)
+    single_maps_transport[13].add_vertical_line(-1.1, 5.338)
+
+    # 1277
+    single_maps_transport[14].add_horizontal_line(-0.09, 5.204)
+    single_maps_transport[14].add_horizontal_line(-0.09, 5.2095)
+    single_maps_transport[14].add_vertical_line(-1.1, 5.329)
+    single_maps_transport[14].add_vertical_line(-1.1, 5.338)
+
+    # 1665
+    single_maps_transport[15].add_horizontal_line(-0.09, 5.205)
+    single_maps_transport[15].add_horizontal_line(-0.09, 5.21)
+    single_maps_transport[15].add_vertical_line(-1.1, 5.329)
+    single_maps_transport[15].add_vertical_line(-1.1, 5.338)
+
+    # 2170
+    single_maps_transport[16].add_horizontal_line(-0.09, 5.2052)
+    single_maps_transport[16].add_horizontal_line(-0.09, 5.2102)
+    single_maps_transport[16].add_vertical_line(-1.1, 5.328)
+    single_maps_transport[16].add_vertical_line(-1.1, 5.338)
+
+
+    for map_obj in single_maps_transport:
+        map_obj.add_triangle()
+        map_obj.add_region(0.003)
+        map_obj.plot_map()
+        map_obj.save_map()
+        ratio_transport, ratio_err_transport = map_obj.get_ratio()
+        print(ratio_transport)
+        ratios_transport.append(ratio_transport)
+        ratios_err_transport.append(ratio_err_transport)
+
+    ########################
+    # Plotting and fitting
+    ########################
+
+    # Blockade
+    plt.figure(figsize=(20, 12))
+    ls = 'dashed'
+    t_read_s = []
+    for elem in all_maps_blockade[:6]:
         t_read_s.append(elem[3])
     t_read_s = np.array(t_read_s) * 125 * 1e-6
     print(t_read_s)
@@ -1709,8 +2080,9 @@ def both_dir_0T():
     for elem in all_maps_transport:
         t_read_s.append(elem[3])
     t_read_s = np.array(t_read_s) * 125 * 1e-6
-    print(t_read_s)
     t_read_s = np.array(t_read_s)
+    print(len(t_read_s))
+    print(len(ratios_transport))
     ratios_transport = np.array(ratios_transport)
     ratios_err_transport = np.array(ratios_err_transport)
     np.save(os.path.join(file_dir, 'tread_transport.npy'), t_read_s)
@@ -1719,224 +2091,26 @@ def both_dir_0T():
     plt.scatter(t_read_s, ratios_transport,
                 facecolors='orangered', edgecolors='black', s=80)
 
-    popt, pcov = curve_fit(exponential_model,
-                           ydata=ratios_transport,
-                           xdata=t_read_s,
-                           sigma=ratios_err_transport,
-                           p0=[1, 0.5, 0.5])
+    #popt, pcov = curve_fit(exponential_model,
+    #                       ydata=ratios_transport,
+    #                       xdata=t_read_s,
+    #                       sigma=ratios_err_transport,
+    #                       p0=[1, 0.5, 0.5])
 
     t = np.linspace(0, max(t_read_s), 100)
-    sigma = np.sqrt(np.diag(pcov)[0])
+    #sigma = np.sqrt(np.diag(pcov)[0])
 
-    plt.plot(t, exponential_model(t, *popt),
-             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
-             color='gray', linestyle=ls)
+    #plt.plot(t, exponential_model(t, *popt),
+    #         label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
+    #         color='gray', linestyle=ls)
     plt.legend()
-    #plt.ylim(0, 1)
+    plt.ylim(1e-1, 1)
     plt.ylabel('Intensity ratio')
     plt.xlabel(r'$T_{read}$ ($\mu$s)')
     plt.tight_layout()
     plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
 
-
-def both_dir_0T_leon():
-    # Get the current working directory
-    current_dir = os.getcwd()
-    file_dir = os.path.join(current_dir, "0T_both_dir_leon")
-    file_names = find_hdf5_files(file_dir)
-
-    group = "Data"
-    dataset = "Data/Data"
-    channels = "Data/Channel names"
-
-    ratios_transport = []
-    ratios_err_transport = []
-    ratios_blockade = []
-    ratios_err_blockade = []
-    all_maps_blockade = []
-    all_maps_transport = []
-    single_maps_blockade = []
-    single_maps_transport = []
-
-    for file in file_names:
-        # Load the data in the given file
-        if '427' in file:
-            #all_maps_transport, _ = load_data(file, group, dataset, channels, all_maps_transport, all_maps_blockade)
-            all_maps_transport = load_data_wo_dir(file, group, dataset, channels, all_maps_transport)
-        elif 'blockade_2' in file:#or 'blockade_3' in file:
-            all_maps_blockade = load_data_wo_dir(file, group, dataset, channels, all_maps_blockade)
-
-    ###########
-    # Blockade
-    ###########
-    print('###################### Blockade #########################')
-    for map in all_maps_blockade:
-        print(map[3])
-        map_obj = SingleMap(map[2], map[1], map[0], 1500, map[3], -1, 1, file_dir)
-        single_maps_blockade.append(map_obj)
-
-    single_maps_blockade[0].set_centers((5.338, 5.21), (5.33, 5.22))
-    single_maps_blockade[1].set_centers((5.345, 5.205), (5.325, 5.22))
-    single_maps_blockade[2].set_centers((5.345, 5.205), (5.325, 5.22))
-    single_maps_blockade[3].set_centers((5.345, 5.2), (5.325, 5.22))
-
-
-    for map_obj in single_maps_blockade:
-        map_obj.subtract_background()
-        #map_obj.detect_lines()
-
-    # 1000
-    single_maps_blockade[0].add_horizontal_line(-0.09, 5.2128)
-    single_maps_blockade[0].add_horizontal_line(-0.09, 5.218)
-    single_maps_blockade[0].add_vertical_line(-1.1, 5.328)
-    single_maps_blockade[0].add_vertical_line(-1.1, 5.3185)
-
-    # 3419
-    single_maps_blockade[1].add_horizontal_line(-0.09, 5.2108)
-    single_maps_blockade[1].add_horizontal_line(-0.09, 5.216)
-    single_maps_blockade[1].add_vertical_line(-1.1, 5.328)
-    single_maps_blockade[1].add_vertical_line(-1.1, 5.3185)
-
-    # 11696
-    single_maps_blockade[2].add_horizontal_line(-0.09, 5.2095)
-    single_maps_blockade[2].add_horizontal_line(-0.09, 5.2146)
-    single_maps_blockade[2].add_vertical_line(-1.1, 5.328)
-    single_maps_blockade[2].add_vertical_line(-1.1, 5.3187)
-
-    # 40000
-    single_maps_blockade[3].add_horizontal_line(-0.09, 5.209)
-    single_maps_blockade[3].add_horizontal_line(-0.09, 5.2139)
-    single_maps_blockade[3].add_vertical_line(-1.1, 5.328)
-    single_maps_blockade[3].add_vertical_line(-1.1, 5.319)
-
-
-
-    for map_obj in single_maps_blockade:
-        #print(map_obj.get_vertical_lines())
-        map_obj.add_triangle()
-        map_obj.plot_map()
-        map_obj.save_map()
-        ratio, sigma_ratio = map_obj.get_ratio()
-        ratios_blockade.append(ratio)
-        ratios_err_blockade.append(sigma_ratio)
-
-    #############
-    # Transport
-    #############
-    print('###################### Transport #########################')
-    all_maps_transport = all_maps_transport[3:10]
-    for map in all_maps_transport:
-        print(map[3])
-        map_obj = SingleMap(map[2], map[1], map[0], 1500, map[3], 1, 3, file_dir)
-        # map_obj.detect_lines()
-        single_maps_transport.append(map_obj)
-
-    single_maps_transport[0].set_centers((5.34, 5.2065), (5.3475, 5.1975))
-    single_maps_transport[1].set_centers((5.34, 5.2065), (5.3475, 5.1975))
-    single_maps_transport[2].set_centers((5.34, 5.2075), (5.3475, 5.1975))
-    single_maps_transport[3].set_centers((5.34, 5.2075), (5.3475, 5.1975))
-    single_maps_transport[4].set_centers((5.34, 5.2075), (5.3475, 5.1975))
-    single_maps_transport[5].set_centers((5.34, 5.208), (5.3475, 5.2))
-    single_maps_transport[6].set_centers((5.34, 5.208), (5.3475, 5.1975))
-
-    for map_obj in single_maps_transport:
-        map_obj.subtract_background()
-        # map_obj.detect_lines()
-
-
-    for map_obj in single_maps_transport:
-        #map_obj.add_triangle()
-        #map_obj.add_region(-0.005)
-        map_obj.plot_map()
-        map_obj.save_map()
-        #ratio_transport, ratio_err_transport = map_obj.get_ratio()
-        #ratios_transport.append(ratio_transport)
-        #ratios_err_transport.append(ratio_err_transport)
-
-    ########################
-    # Plotting and fitting
-    ########################
-
-    # Blockade
-    plt.figure(figsize=(20, 12))
-    ls = 'dashed'
-    t_read_s = []
-    for elem in all_maps_blockade:
-        t_read_s.append(elem[3])
-    t_read_s = np.array(t_read_s) * 125 * 1e-6
-    print(t_read_s)
-    t_read_s = np.array(t_read_s)
-    ratios_blockade = np.array(ratios_blockade)
-    ratios_err_blockade = np.array(ratios_err_blockade)
-    np.save(os.path.join(file_dir, 'tread_blockade.npy'), t_read_s)
-    np.save(os.path.join(file_dir, 'ratios_blockade.npy'), ratios_blockade)
-    np.save(os.path.join(file_dir, 'ratios_err_blockade.npy'), ratios_err_blockade)
-    plt.scatter(t_read_s, ratios_blockade,
-                facecolors='crimson', edgecolors='black', s=80)
-    # plt.errorbar(t_read_s, ratios_blockade,
-    #             ratios_err_blockade,
-    #             linestyle='None', marker='.',
-    #             color='mediumvioletred', elinewidth=0.5)
-
-    popt, pcov = curve_fit(exponential_model,
-                           ydata=ratios_blockade,
-                           xdata=t_read_s,
-                           sigma=ratios_err_blockade,
-                           p0=[1, 0.5, 0.5])
-
-    # popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
-
-    t = np.linspace(0, max(t_read_s), 100)
-    # print(popt, "\n", pcov)
-    sigma = np.sqrt(np.diag(pcov)[0])
-
-    plt.plot(t, exponential_model(t, *popt),
-             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
-             color='gray', linestyle=ls)
-    plt.legend()
-    plt.ylabel('Intensity ratio')
-    plt.xlabel(r'$T_{read}$ ($\mu$s)')
-    plt.tight_layout()
-    plt.savefig(os.path.join(file_dir, f'exp_fit_blockade.png'))
-
-    # Transport
-
-    # plt.figure(figsize=(20, 12))
-    # ls = 'dashed'
-    # t_read_s = []
-    # for elem in all_maps_transport:
-    #     t_read_s.append(elem[3])
-    # t_read_s = np.array(t_read_s) * 125 * 1e-6
-    # print(t_read_s)
-    # t_read_s = np.array(t_read_s)
-    # ratios_transport = np.array(ratios_transport)
-    # ratios_err_transport = np.array(ratios_err_transport)
-    # np.save(os.path.join(file_dir, 'tread_transport.npy'), t_read_s)
-    # np.save(os.path.join(file_dir, 'ratios_transport.npy'), ratios_transport)
-    # np.save(os.path.join(file_dir, 'ratios_err_transport.npy'), ratios_err_transport)
-    # plt.scatter(t_read_s, ratios_transport,
-    #             facecolors='orangered', edgecolors='black', s=80)
-    #
-    # popt, pcov = curve_fit(exponential_model,
-    #                        ydata=ratios_transport,
-    #                        xdata=t_read_s,
-    #                        sigma=ratios_err_transport,
-    #                        p0=[1, 0.5, 0.5])
-    #
-    # t = np.linspace(0, max(t_read_s), 100)
-    # sigma = np.sqrt(np.diag(pcov)[0])
-    #
-    # plt.plot(t, exponential_model(t, *popt),
-    #          label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
-    #          color='gray', linestyle=ls)
-    # plt.legend()
-    # #plt.ylim(0, 1)
-    # plt.ylabel('Intensity ratio')
-    # plt.xlabel(r'$T_{read}$ ($\mu$s)')
-    # plt.tight_layout()
-    # plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
-
-def both_dir_1T():
+def both_dir_1T(r=3):
     # Get the current working directory
     current_dir = os.getcwd()
     file_dir = os.path.join(current_dir, "1T_both_dir")
@@ -1964,31 +2138,78 @@ def both_dir_1T():
     # Blockade
     ###########
     print('###################### Blockade #########################')
-    for map in all_maps_blockade[1:21]:
+    for map in all_maps_blockade[1:21] + all_maps_blockade[25:]:
         print(map[3])
         map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], 1, 1, file_dir)
         single_maps_blockade.append(map_obj)
 
-    single_maps_blockade[0].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[1].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[2].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[3].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[4].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[5].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[6].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[7].set_centers((5.176, 5.265), (5.1800, 5.2500))
-    single_maps_blockade[8].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[9].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[10].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[11].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[12].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[13].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[14].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[15].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[16].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[17].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[18].set_centers((5.176, 5.266), (5.1800, 5.2500))
-    single_maps_blockade[19].set_centers((5.176, 5.266), (5.1800, 5.2500))
+    single_maps_blockade[0].set_centers((5.17, 5.2625), (5.1800, 5.2500))
+    single_maps_blockade[1].set_centers((5.17, 5.2625), (5.1800, 5.2500))
+    single_maps_blockade[2].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[3].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[4].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[5].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[6].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[7].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[8].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[9].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[10].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[11].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[12].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[13].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[14].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[15].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[16].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[17].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[18].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[19].set_centers((5.17, 5.263), (5.1800, 5.2500))
+    single_maps_blockade[20].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[21].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[22].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[23].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[24].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[25].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[26].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[27].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[28].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[29].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[30].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[31].set_centers((5.172, 5.26), (5.1800, 5.2500))
+    single_maps_blockade[32].set_centers((5.172, 5.26), (5.1800, 5.2500))
+
+    single_maps_blockade[0].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[1].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[2].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[3].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[4].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[5].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[6].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[7].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[8].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[9].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[10].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[11].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[12].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[13].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[14].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[15].set_background_roi((5.1750, 5.1840), (5.2475, 5.2550))
+    single_maps_blockade[16].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[17].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[18].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[19].set_background_roi((5.1780, 5.1835), (5.2475, 5.2550))
+    single_maps_blockade[20].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[21].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[22].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[23].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[24].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[25].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[26].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[27].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[28].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[29].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[30].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[31].set_background_roi((5.1775, 5.1825), (5.2450, 5.2525))
+    single_maps_blockade[32].set_background_roi((5.1775, 5.1825), (5.2450, 5.2550))
 
     for map_obj in single_maps_blockade:
         map_obj.subtract_background()
@@ -1996,132 +2217,212 @@ def both_dir_1T():
 
     # 2475
     single_maps_blockade[0].add_horizontal_line(-0.85, 5.2618)
-    single_maps_blockade[0].add_horizontal_line(-0.85, 5.2701)
+    single_maps_blockade[0].add_horizontal_line(-0.85, 5.2702)
     single_maps_blockade[0].add_vertical_line(-11, 5.1727)
-    single_maps_blockade[0].add_vertical_line(-11, 5.1777)
+    single_maps_blockade[0].add_vertical_line(-11, 5.1778)
 
     # 4450
     single_maps_blockade[1].add_horizontal_line(-0.85, 5.2621)
-    single_maps_blockade[1].add_horizontal_line(-0.85, 5.2706)
+    single_maps_blockade[1].add_horizontal_line(-0.85, 5.2708)
     single_maps_blockade[1].add_vertical_line(-11, 5.1725)
-    single_maps_blockade[1].add_vertical_line(-11, 5.1774)
+    single_maps_blockade[1].add_vertical_line(-11, 5.1776)
 
     # 6425
-    single_maps_blockade[2].add_horizontal_line(-0.85, 5.2623)
-    single_maps_blockade[2].add_horizontal_line(-0.85, 5.2707)
+    single_maps_blockade[2].add_horizontal_line(-0.85, 5.2622)
+    single_maps_blockade[2].add_horizontal_line(-0.85, 5.2708)
     single_maps_blockade[2].add_vertical_line(-11, 5.1724)
-    single_maps_blockade[2].add_vertical_line(-11, 5.1773)
+    single_maps_blockade[2].add_vertical_line(-11, 5.1775)
 
     # 8400
     single_maps_blockade[3].add_horizontal_line(-0.85, 5.2624)
-    single_maps_blockade[3].add_horizontal_line(-0.85, 5.271)
+    single_maps_blockade[3].add_horizontal_line(-0.85, 5.2711)
     single_maps_blockade[3].add_vertical_line(-11, 5.1724)
-    single_maps_blockade[3].add_vertical_line(-11, 5.1773)
+    single_maps_blockade[3].add_vertical_line(-11, 5.1775)
 
     # 10375
     single_maps_blockade[4].add_horizontal_line(-0.85, 5.2625)
-    single_maps_blockade[4].add_horizontal_line(-0.85, 5.2712)
-    single_maps_blockade[4].add_vertical_line(-11, 5.1724)
-    single_maps_blockade[4].add_vertical_line(-11, 5.1772)
+    single_maps_blockade[4].add_horizontal_line(-0.85, 5.2713)
+    single_maps_blockade[4].add_vertical_line(-11, 5.1723)
+    single_maps_blockade[4].add_vertical_line(-11, 5.1774)
 
     # 12350
     single_maps_blockade[5].add_horizontal_line(-0.85, 5.2626)
-    single_maps_blockade[5].add_horizontal_line(-0.85, 5.2713)
+    single_maps_blockade[5].add_horizontal_line(-0.85, 5.2714)
     single_maps_blockade[5].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[5].add_vertical_line(-11, 5.1772)
+    single_maps_blockade[5].add_vertical_line(-11, 5.1774)
 
     # 14325
     single_maps_blockade[6].add_horizontal_line(-0.85, 5.2623)
     single_maps_blockade[6].add_horizontal_line(-0.85, 5.2712)
-    single_maps_blockade[6].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[6].add_vertical_line(-11, 5.1772)
+    single_maps_blockade[6].add_vertical_line(-11, 5.1722)
+    single_maps_blockade[6].add_vertical_line(-11, 5.1774)
 
     # 16300
     single_maps_blockade[7].add_horizontal_line(-0.85, 5.2623)
-    single_maps_blockade[7].add_horizontal_line(-0.85, 5.2712)
-    single_maps_blockade[7].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[7].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[7].add_horizontal_line(-0.85, 5.2713)
+    single_maps_blockade[7].add_vertical_line(-11, 5.1722)
+    single_maps_blockade[7].add_vertical_line(-11, 5.1774)
 
     # 18275
     single_maps_blockade[8].add_horizontal_line(-0.85, 5.2623)
-    single_maps_blockade[8].add_horizontal_line(-0.85, 5.2712)
+    single_maps_blockade[8].add_horizontal_line(-0.85, 5.2713)
     single_maps_blockade[8].add_vertical_line(-11, 5.1722)
-    single_maps_blockade[8].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[8].add_vertical_line(-11, 5.1774)
 
     # 20250
     single_maps_blockade[9].add_horizontal_line(-0.85, 5.2626)
-    single_maps_blockade[9].add_horizontal_line(-0.85, 5.2712)
-    single_maps_blockade[9].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[9].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[9].add_horizontal_line(-0.85, 5.2713)
+    single_maps_blockade[9].add_vertical_line(-11, 5.1722)
+    single_maps_blockade[9].add_vertical_line(-11, 5.1773)
 
     # 22225
     single_maps_blockade[10].add_horizontal_line(-0.85, 5.2625)
-    single_maps_blockade[10].add_horizontal_line(-0.85, 5.2711)
+    single_maps_blockade[10].add_horizontal_line(-0.85, 5.2712)
     single_maps_blockade[10].add_vertical_line(-11, 5.1722)
-    single_maps_blockade[10].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[10].add_vertical_line(-11, 5.1773)
 
     # 24200
     single_maps_blockade[11].add_horizontal_line(-0.85, 5.2625)
-    single_maps_blockade[11].add_horizontal_line(-0.85, 5.2711)
+    single_maps_blockade[11].add_horizontal_line(-0.85, 5.2712)
     single_maps_blockade[11].add_vertical_line(-11, 5.1722)
-    single_maps_blockade[11].add_vertical_line(-11, 5.17705)
+    single_maps_blockade[11].add_vertical_line(-11, 5.1773)
 
     # 26175
     single_maps_blockade[12].add_horizontal_line(-0.85, 5.2625)
-    single_maps_blockade[12].add_horizontal_line(-0.85, 5.2711)
-    single_maps_blockade[12].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[12].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[12].add_horizontal_line(-0.85, 5.2712)
+    single_maps_blockade[12].add_vertical_line(-11, 5.1722)
+    single_maps_blockade[12].add_vertical_line(-11, 5.1773)
 
     # 28150
     single_maps_blockade[13].add_horizontal_line(-0.85, 5.2624)
-    single_maps_blockade[13].add_horizontal_line(-0.85, 5.2712)
-    single_maps_blockade[13].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[13].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[13].add_horizontal_line(-0.85, 5.2713)
+    single_maps_blockade[13].add_vertical_line(-11, 5.1722)
+    single_maps_blockade[13].add_vertical_line(-11, 5.1773)
 
     # 30125
     single_maps_blockade[14].add_horizontal_line(-0.85, 5.2625)
-    single_maps_blockade[14].add_horizontal_line(-0.85, 5.2711)
+    single_maps_blockade[14].add_horizontal_line(-0.85, 5.2713)
     single_maps_blockade[14].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[14].add_vertical_line(-11, 5.1772)
+    single_maps_blockade[14].add_vertical_line(-11, 5.1773)
 
     # 32100
-    single_maps_blockade[15].add_horizontal_line(-0.85, 5.2626)
+    single_maps_blockade[15].add_horizontal_line(-0.85, 5.2625)
     single_maps_blockade[15].add_horizontal_line(-0.85, 5.2713)
-    single_maps_blockade[15].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[15].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[15].add_vertical_line(-11, 5.1722)
+    single_maps_blockade[15].add_vertical_line(-11, 5.1773)
 
     # 34075
     single_maps_blockade[16].add_horizontal_line(-0.85, 5.2625)
-    single_maps_blockade[16].add_horizontal_line(-0.85, 5.2711)
+    single_maps_blockade[16].add_horizontal_line(-0.85, 5.2712)
     single_maps_blockade[16].add_vertical_line(-11, 5.1722)
-    single_maps_blockade[16].add_vertical_line(-11, 5.177)
+    single_maps_blockade[16].add_vertical_line(-11, 5.1773)
 
     # 36050
     single_maps_blockade[17].add_horizontal_line(-0.85, 5.2627)
-    single_maps_blockade[17].add_horizontal_line(-0.85, 5.2712)
-    single_maps_blockade[17].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[17].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[17].add_horizontal_line(-0.85, 5.2713)
+    single_maps_blockade[17].add_vertical_line(-11, 5.1722)
+    single_maps_blockade[17].add_vertical_line(-11, 5.1774)
 
     # 38025
-    single_maps_blockade[18].add_horizontal_line(-0.85, 5.2627)
+    single_maps_blockade[18].add_horizontal_line(-0.85, 5.2626)
     single_maps_blockade[18].add_horizontal_line(-0.85, 5.2713)
     single_maps_blockade[18].add_vertical_line(-11, 5.1722)
-    single_maps_blockade[18].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[18].add_vertical_line(-11, 5.1774)
 
     # 40000
-    single_maps_blockade[19].add_horizontal_line(-0.85, 5.2627)
-    single_maps_blockade[19].add_horizontal_line(-0.85, 5.27115)
-    single_maps_blockade[19].add_vertical_line(-11, 5.1723)
-    single_maps_blockade[19].add_vertical_line(-11, 5.1771)
+    single_maps_blockade[19].add_horizontal_line(-0.85, 5.2626)
+    single_maps_blockade[19].add_horizontal_line(-0.85, 5.2712)
+    single_maps_blockade[19].add_vertical_line(-11, 5.1722)
+    single_maps_blockade[19].add_vertical_line(-11, 5.1774)
+
+    # 725
+    single_maps_blockade[20].add_horizontal_line(-0.85, 5.2605)
+    single_maps_blockade[20].add_horizontal_line(-0.85, 5.2685)
+    single_maps_blockade[20].add_vertical_line(-11, 5.1741)
+    single_maps_blockade[20].add_vertical_line(-11, 5.1790)
+
+    # 831
+    single_maps_blockade[21].add_horizontal_line(-0.85, 5.2606)
+    single_maps_blockade[21].add_horizontal_line(-0.85, 5.2688)
+    single_maps_blockade[21].add_vertical_line(-11, 5.1739)
+    single_maps_blockade[21].add_vertical_line(-11, 5.1789)
+
+    # 937
+    single_maps_blockade[22].add_horizontal_line(-0.85, 5.2609)
+    single_maps_blockade[22].add_horizontal_line(-0.85, 5.2691)
+    single_maps_blockade[22].add_vertical_line(-11, 5.1738)
+    single_maps_blockade[22].add_vertical_line(-11, 5.1787)
+
+    # 1043
+    single_maps_blockade[23].add_horizontal_line(-0.85, 5.2609)
+    single_maps_blockade[23].add_horizontal_line(-0.85, 5.2692)
+    single_maps_blockade[23].add_vertical_line(-11, 5.1737)
+    single_maps_blockade[23].add_vertical_line(-11, 5.1787)
+
+    # 1150
+    single_maps_blockade[24].add_horizontal_line(-0.85, 5.2610)
+    single_maps_blockade[24].add_horizontal_line(-0.85, 5.2692)
+    single_maps_blockade[24].add_vertical_line(-11, 5.1736)
+    single_maps_blockade[24].add_vertical_line(-11, 5.1785)
+
+    # 1256
+    single_maps_blockade[25].add_horizontal_line(-0.85, 5.2613)
+    single_maps_blockade[25].add_horizontal_line(-0.85, 5.2695)
+    single_maps_blockade[25].add_vertical_line(-11, 5.1735)
+    single_maps_blockade[25].add_vertical_line(-11, 5.1785)
+
+    # 1362
+    single_maps_blockade[26].add_horizontal_line(-0.85, 5.2613)
+    single_maps_blockade[26].add_horizontal_line(-0.85, 5.2696)
+    single_maps_blockade[26].add_vertical_line(-11, 5.1734)
+    single_maps_blockade[26].add_vertical_line(-11, 5.1784)
+
+    # 1468
+    single_maps_blockade[27].add_horizontal_line(-0.85, 5.2614)
+    single_maps_blockade[27].add_horizontal_line(-0.85, 5.2698)
+    single_maps_blockade[27].add_vertical_line(-11, 5.1734)
+    single_maps_blockade[27].add_vertical_line(-11, 5.1784)
+
+    # 1575
+    single_maps_blockade[28].add_horizontal_line(-0.85, 5.2616)
+    single_maps_blockade[28].add_horizontal_line(-0.85, 5.2699)
+    single_maps_blockade[28].add_vertical_line(-11, 5.1733)
+    single_maps_blockade[28].add_vertical_line(-11, 5.1783)
+
+    # 1681
+    single_maps_blockade[29].add_horizontal_line(-0.85, 5.2617)
+    single_maps_blockade[29].add_horizontal_line(-0.85, 5.2700)
+    single_maps_blockade[29].add_vertical_line(-11, 5.1732)
+    single_maps_blockade[29].add_vertical_line(-11, 5.1782)
+
+    # 1787
+    single_maps_blockade[30].add_horizontal_line(-0.85, 5.2616)
+    single_maps_blockade[30].add_horizontal_line(-0.85, 5.2701)
+    single_maps_blockade[30].add_vertical_line(-11, 5.1732)
+    single_maps_blockade[30].add_vertical_line(-11, 5.1781)
+
+    # 1893
+    single_maps_blockade[31].add_horizontal_line(-0.85, 5.2617)
+    single_maps_blockade[31].add_horizontal_line(-0.85, 5.2702)
+    single_maps_blockade[31].add_vertical_line(-11, 5.1732)
+    single_maps_blockade[31].add_vertical_line(-11, 5.1782)
+
+    # 2000
+    single_maps_blockade[32].add_horizontal_line(-0.85, 5.2617)
+    single_maps_blockade[32].add_horizontal_line(-0.85, 5.2703)
+    single_maps_blockade[32].add_vertical_line(-11, 5.1732)
+    single_maps_blockade[32].add_vertical_line(-11, 5.1781)
 
     for map_obj in single_maps_blockade:
         #print(map_obj.get_vertical_lines())
-        map_obj.add_triangle(offset=0.0025)
-        map_obj.plot_map()
-        map_obj.save_map()
-        ratio, sigma_ratio = map_obj.get_ratio()
+        map_obj.add_triangle(offset=0.0068)
+
+        ratio, sigma_ratio = map_obj.get_ratio(radius=r)
         ratios_blockade.append(ratio)
         ratios_err_blockade.append(sigma_ratio)
+
+        map_obj.plot_map()
+        map_obj.save_map()
 
 
     #############
@@ -2131,7 +2432,7 @@ def both_dir_1T():
 
     for map in all_maps_transport[1:]:
         print(map[3])
-        map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], -1, 2, file_dir)
+        map_obj = SingleMap(map[1], map[2], map[0], 1500, map[3], -1, 4, file_dir)
         single_maps_transport.append(map_obj)
 
     single_maps_transport[0].set_centers((5.176, 5.2525), (5.1725, 5.2650))
@@ -2173,30 +2474,69 @@ def both_dir_1T():
     single_maps_transport[35].set_centers((5.1760, 5.2525), (5.17, 5.2680))
     single_maps_transport[36].set_centers((5.1760, 5.2525), (5.17, 5.2680))
 
+    single_maps_transport[0].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[1].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[2].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[3].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[4].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[5].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[5].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[6].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[7].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[8].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[9].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[10].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[11].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[12].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[13].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[14].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[15].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[16].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[17].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[18].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[19].set_background_roi((5.1675, 5.1715), (5.2475, 5.2550))
+    single_maps_transport[20].set_background_roi((5.1673, 5.1700), (5.2450, 5.2500))
+    single_maps_transport[21].set_background_roi((5.1673, 5.1700), (5.2450, 5.2500))
+    single_maps_transport[22].set_background_roi((5.1673, 5.1700), (5.2450, 5.2500))
+    single_maps_transport[23].set_background_roi((5.1673, 5.1700), (5.2450, 5.2500))
+    single_maps_transport[24].set_background_roi((5.1673, 5.1700), (5.2450, 5.2500))
+    single_maps_transport[25].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[26].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[27].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[28].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[29].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[30].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[31].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[32].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[33].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[34].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[35].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+    single_maps_transport[36].set_background_roi((5.1673, 5.1710), (5.2450, 5.2550))
+
     for map_obj in single_maps_transport:
         map_obj.subtract_background()
        #map_obj.detect_lines()
 
     # 2475
-    single_maps_transport[0].add_horizontal_line(-0.85, 5.2638)
+    single_maps_transport[0].add_horizontal_line(-0.85, 5.2640)
     single_maps_transport[0].add_horizontal_line(-0.85, 5.2721)
     single_maps_transport[0].add_vertical_line(-11, 5.1716)
-    single_maps_transport[0].add_vertical_line(-11, 5.1759)
+    single_maps_transport[0].add_vertical_line(-11, 5.1758)
 
     # 4450
-    single_maps_transport[1].add_horizontal_line(-0.85, 5.2633)
-    single_maps_transport[1].add_horizontal_line(-0.85, 5.2717)
-    single_maps_transport[1].add_vertical_line(-11, 5.1719)
+    single_maps_transport[1].add_horizontal_line(-0.85, 5.2635)
+    single_maps_transport[1].add_horizontal_line(-0.85, 5.2715)
+    single_maps_transport[1].add_vertical_line(-11, 5.1718)
     single_maps_transport[1].add_vertical_line(-11, 5.1761)
 
     # 6425
     single_maps_transport[2].add_horizontal_line(-0.85, 5.2631)
-    single_maps_transport[2].add_horizontal_line(-0.85, 5.2716)
-    single_maps_transport[2].add_vertical_line(-11, 5.172)
-    single_maps_transport[2].add_vertical_line(-11, 5.1762)
+    single_maps_transport[2].add_horizontal_line(-0.85, 5.2718)
+    single_maps_transport[2].add_vertical_line(-11, 5.1720)
+    single_maps_transport[2].add_vertical_line(-11, 5.1761)
 
     # 8400
-    single_maps_transport[3].add_horizontal_line(-0.85, 5.2631)
+    single_maps_transport[3].add_horizontal_line(-0.85, 5.2632)
     single_maps_transport[3].add_horizontal_line(-0.85, 5.2715)
     single_maps_transport[3].add_vertical_line(-11, 5.172)
     single_maps_transport[3].add_vertical_line(-11, 5.1763)
@@ -2204,7 +2544,7 @@ def both_dir_1T():
     # 10375
     single_maps_transport[4].add_horizontal_line(-0.85, 5.2633)
     single_maps_transport[4].add_horizontal_line(-0.85, 5.2713)
-    single_maps_transport[4].add_vertical_line(-11, 5.172)
+    single_maps_transport[4].add_vertical_line(-11, 5.1721)
     single_maps_transport[4].add_vertical_line(-11, 5.1763)
 
     # 12350
@@ -2336,7 +2676,7 @@ def both_dir_1T():
     # 937
     single_maps_transport[26].add_horizontal_line(-0.85, 5.2657)
     single_maps_transport[26].add_horizontal_line(-0.85, 5.2738)
-    single_maps_transport[26].add_vertical_line(-11, 5.1711)
+    single_maps_transport[26].add_vertical_line(-11, 5.1709)
     single_maps_transport[26].add_vertical_line(-11, 5.1752)
 
     # 1043
@@ -2401,13 +2741,15 @@ def both_dir_1T():
 
     for map_obj in single_maps_transport:
         map_obj.add_triangle()
-        map_obj.add_region(-0.002)
-        map_obj.add_region(-0.003)
-        map_obj.plot_map()
-        map_obj.save_map()
-        ratio_transport, ratio_err_transport = map_obj.get_ratio()
+        map_obj.add_region(-0.0025)
+        #map_obj.add_region(-0.003)
+
+        ratio_transport, ratio_err_transport = map_obj.get_ratio(radius=r)
         ratios_transport.append(ratio_transport)
         ratios_err_transport.append(ratio_err_transport)
+
+        map_obj.plot_map()
+        map_obj.save_map()
 
 
     ########################
@@ -2418,7 +2760,7 @@ def both_dir_1T():
     plt.figure(figsize=(20, 12))
     ls = 'dashed'
     t_read_s = []
-    for elem in all_maps_blockade[1:21]:
+    for elem in all_maps_blockade[1:21] + all_maps_blockade[25:]:
         t_read_s.append(elem[3])
     t_read_s = np.array(t_read_s) * 125 * 1e-6
     print(t_read_s)
@@ -2436,7 +2778,7 @@ def both_dir_1T():
                            ydata=ratios_blockade,
                            xdata=t_read_s,
                            sigma=ratios_err_blockade,
-                           p0=[1, 0.5, 0.5])
+                           p0=[1, 0.5, 0.1])
 
     # popt, pcov = fit_with_derivative(exponential_model, t_read_s, ratios_blockade, p0=[1, 0.5, 0.5])
 
@@ -2445,7 +2787,7 @@ def both_dir_1T():
     sigma = np.sqrt(np.diag(pcov)[0])
 
     plt.plot(t, exponential_model(t, *popt),
-             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
+             label=rf'$\tau_b$ : {popt[1]} $\pm$ {sigma}$\mu$s',
              color='gray', linestyle=ls)
 
     plt.scatter(t_read_s, ratios_blockade,
@@ -2455,8 +2797,11 @@ def both_dir_1T():
     #            facecolors='gray', edgecolors='black', s=80)
 
     plt.legend()
+    plt.ylim(0.6, 1)
     plt.ylabel('Intensity ratio')
     plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    plt.ylim(1e-1, 1)
+    plt.yscale('log')
     plt.tight_layout()
     plt.savefig(os.path.join(file_dir, f'exp_fit_blockade.png'))
 
@@ -2471,24 +2816,26 @@ def both_dir_1T():
     print(t_read_s)
     ratios_transport = np.array(ratios_transport)
     ratios_err_transport = np.array(ratios_err_transport)
-    print(ratios_transport[:16, 1])
+    print(ratios_transport[:, 0])
 
     #plt.scatter(t_read_s, ratios_transport[:, 1],
     #            facecolors='none', edgecolors='mediumvioletred', s=80)
 
     
     popt, pcov = curve_fit(exponential_model,
-                           ydata=ratios_transport[:, 0],
-                           xdata=t_read_s,
-                           sigma=ratios_err_transport[:, 0],
-                           p0=[1, 0.5, 0.5])
+                           ydata=ratios_transport[18:-4, 0],
+                           xdata=t_read_s[18:-4],
+                           sigma=ratios_err_transport[18:-4, 0],
+                           p0=[1, 0.5, 0.1])
 
     sigma = np.sqrt(np.diag(pcov)[0])
     t = np.linspace(0, max(t_read_s), 100)
 
     plt.plot(t, exponential_model(t, *popt),
-             label=rf'$\tau_b$ : {popt[0]} $\pm$ {sigma}$\mu$s',
+             label=rf'$\tau_b$ : {popt[1]} $\pm$ {sigma}$\mu$s',
              color='gray', linestyle=ls)
+
+    #plt.semilogy(t, exponential_model(t, *popt)-popt[2])
 
     plt.scatter(t_read_s, ratios_transport[:, 0],
                 facecolors='orangered', edgecolors='black', s=80)
@@ -2521,27 +2868,28 @@ def both_dir_1T():
     np.save(os.path.join(file_dir, 'ratios_err_transport.npy'), ratios_err_transport)
     
     popt1, pcov1 = curve_fit(exponential_model,
-                             ydata=ratios_transport[:, 1],
-                             xdata=t_read_s,
-                             sigma=ratios_err_transport[:, 1],
-                             p0=[1, 0.5, 0.5])
+                             ydata=ratios_transport[18:-4, 1],
+                             xdata=t_read_s[18:-4],
+                             sigma=ratios_err_transport[18:-4, 1],
+                             p0=[1, 0.5, 0.1])
 
     sigma1 = np.sqrt(np.diag(pcov1)[0])
     t = np.linspace(0, max(t_read_s), 100)
 
     plt.plot(t, exponential_model(t, *popt1),
-             label=rf'$\tau_b$ : {popt1[0]} $\pm$ {sigma1}$\mu$s',
+             label=rf'$\tau_b$ : {popt1[1]} $\pm$ {sigma1}$\mu$s',
              color='gray', linestyle=ls)
 
     plt.scatter(t_read_s, ratios_transport[:, 1],
                 facecolors='mediumvioletred', edgecolors='black', s=80)
     
     plt.legend()
-    # plt.ylim(0, 1)
+    plt.ylim(1e-2, 1)
     plt.ylabel('Intensity ratio')
     plt.xlabel(r'$T_{read}$ ($\mu$s)')
+    plt.yscale('log')
     plt.tight_layout()
-    plt.savefig(os.path.join(file_dir, f'exp_fit_transport1.png'))
+    plt.savefig(os.path.join(file_dir, f'exp_fit_transport.png'))
 
 def maps_vs_pg13():
     # Get the current working directory
@@ -2587,9 +2935,9 @@ def main():
     #both_dir_500mT()
     #both_dir_400mT()
     #both_dir_0T()
-    #both_dir_1T()
+    both_dir_1T(r=1)
     #both_dir_0T_leon()
-    maps_vs_pg13()
+    #maps_vs_pg13()
 
 if __name__ == "__main__":
     main()
